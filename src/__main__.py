@@ -176,8 +176,11 @@ async def send_post(post, channel_id, files):
 
 
 async def send_message(message, channel_id):
-    channel = client.get_channel(channel_id)
-    await channel.send(message)
+    try:
+        channel = client.get_channel(channel_id)
+        await channel.send(message)
+    except Exception as e:
+        print(e)
 
 
 def get_all_users():
@@ -206,7 +209,6 @@ def get_channels_for_user(user):
 
 async def refresh_users(users, refresh_all_users, channel_sent_from):
     for user in users:
-
         last_post_id = get_last_post_id(user)
         channels = get_channels_for_user(user)
         posts = get_posts(user, last_post_id)
@@ -270,6 +272,16 @@ def get_registered_users_in_channel(channel_id):
     return users
 
 
+async def print_auto_refresh_message():
+    if '{channel_id}' not in os.getenv('REFRESH_ALL_CHANNEL'):
+        try:
+            refresh_all_channel = int(os.getenv('REFRESH_ALL_CHANNEL'))
+            await send_message("refreshing all", refresh_all_channel)
+        except Exception as e:
+            print(e)
+            pass
+
+
 def getMediaId(post):
     return post.mediaid
 
@@ -279,7 +291,7 @@ async def auto_refresh():
     with contextlib.suppress(Exception):
         all_users = get_all_users()
         print('auto refreshing all users')
-        await send_message("refreshing all", 827659060634976296)
+        await print_auto_refresh_message()
         await refresh_users(all_users, True, None)
 
 

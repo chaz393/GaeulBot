@@ -15,6 +15,7 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       BOT_OWNER_ID: ${BOT_OWNER_ID}
+      REFRESH_ALL_CHANNEL: ${REFRESH_ALL_UPDATE_CHANNEL}
     depends_on:
     - postgres
 
