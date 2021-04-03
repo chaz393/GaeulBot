@@ -1,0 +1,37 @@
+version: "3.3"
+
+services:
+  gaeulbot:
+    build:
+      context: .
+    image: fanchazstic/gaeulbot
+    volumes:
+    - downloads:/downloads
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      BOT_OWNER_ID: ${BOT_OWNER_ID}
+    depends_on:
+    - postgres
+
+  postgres:
+    image: postgres:13-alpine
+    restart: unless-stopped
+    volumes:
+    - ./db-init:/docker-entrypoint-initdb.d
+    - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+    - "5432:5432"
+
+
+volumes:
+  pgdata:
+  downloads:
