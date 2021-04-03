@@ -1,6 +1,4 @@
-# GaeulBot
-
-an Instagram bot for discord
+# GaeulBot - an Instagram bot for Discord
 
 clone this porject
 
