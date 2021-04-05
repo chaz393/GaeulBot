@@ -1,8 +1,8 @@
 # GaeulBot - an Instagram bot for Discord
 
-clone this porject
+clone this project
 
-edit the .env file and fill in your information
+copy the .example.env file to .env and edit it with your information
 
 run docker-compose build
 
