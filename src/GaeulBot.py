@@ -208,7 +208,8 @@ def get_files(item):
 
 
 async def print_auto_refresh_message():
-    if '{channel_id}' not in os.getenv('REFRESH_ALL_CHANNEL'):
+    channel_id = os.getenv('REFRESH_ALL_CHANNEL')
+    if '{channel_id}' not in channel_id and len(channel_id) > 0:
         try:
             refresh_all_channel = int(os.getenv('REFRESH_ALL_CHANNEL'))
             await DiscordHelper.send_message("refreshing all", refresh_all_channel, client)
