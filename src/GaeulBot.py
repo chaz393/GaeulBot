@@ -123,6 +123,8 @@ async def refresh_users(users, refresh_all_users, channel_sent_from):
     await refresh_posts(users, refresh_all_users, channel_sent_from)
     if instaHelper.stories_enabled:
         await refresh_stories(users, refresh_all_users, channel_sent_from)
+    if refresh_all_users:
+        await DiscordHelper.send_message("done refreshing", channel_sent_from, client)
 
 
 async def refresh_posts(users, refresh_all_users, channel_sent_from):
@@ -210,12 +212,15 @@ def get_files(item):
     return files
 
 
-async def print_auto_refresh_message():
+async def print_auto_refresh_message(start):
     channel_id = os.getenv('REFRESH_ALL_CHANNEL')
     if '{channel_id}' not in channel_id and len(channel_id) > 0:
         try:
             refresh_all_channel = int(os.getenv('REFRESH_ALL_CHANNEL'))
-            await DiscordHelper.send_message("refreshing all", refresh_all_channel, client)
+            if start:
+                await DiscordHelper.send_message("refreshing all", refresh_all_channel, client)
+            else:
+                await DiscordHelper.send_message("done refreshing", refresh_all_channel, client)
         except Exception as e:
             print(e)
             pass
@@ -229,8 +234,9 @@ async def auto_refresh():
         if not first_refresh:
             all_users = postgresDao.get_all_users()
             print('auto refreshing all users')
-            await print_auto_refresh_message()
+            await print_auto_refresh_message(True)
             await refresh_users(all_users, True, None)
+            await print_auto_refresh_message(False)
         else:
             first_refresh = False
 
