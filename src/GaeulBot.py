@@ -118,6 +118,8 @@ async def on_message(message):
 
 
 async def refresh_users(users, refresh_all_users, channel_sent_from):
+    if refresh_all_users:
+        await DiscordHelper.send_message("refreshing all", channel_sent_from, client)
     await refresh_posts(users, refresh_all_users, channel_sent_from)
     if instaHelper.stories_enabled:
         await refresh_stories(users, refresh_all_users, channel_sent_from)
