@@ -12,6 +12,7 @@ from discord.ext import tasks
 postgresDao = PostgresDao()
 instaHelper = InstaHelper()
 client = discord.Client()
+first_refresh = True
 help_text = 'Use $register {username} to register a user. ($register p_fall99) \n' \
             'Use $refresh to refresh the current users. \n' \
             'Use $users to see current users. \n' \
@@ -221,10 +222,15 @@ async def print_auto_refresh_message():
 @tasks.loop(minutes=20)
 async def auto_refresh():
     with contextlib.suppress(Exception):
-        all_users = postgresDao.get_all_users()
-        print('auto refreshing all users')
-        await print_auto_refresh_message()
-        await refresh_users(all_users, True, None)
+        global first_refresh
+        # it always tries to run this when first starting and fails because the bot hasn't started yet
+        if not first_refresh:
+            all_users = postgresDao.get_all_users()
+            print('auto refreshing all users')
+            await print_auto_refresh_message()
+            await refresh_users(all_users, True, None)
+        else:
+            first_refresh = False
 
 
 if __name__ == "__main__":
