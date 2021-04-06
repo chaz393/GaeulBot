@@ -248,7 +248,7 @@ async def print_auto_refresh_message(start, duration):
             pass
 
 
-@tasks.loop(minutes=20)
+@tasks.loop(minutes=60)
 async def auto_refresh():
     with contextlib.suppress(Exception):
         global first_refresh
