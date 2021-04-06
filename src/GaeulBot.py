@@ -205,21 +205,21 @@ def unregister_user(username, channel_id):
 async def send_posts(posts, user, channels):
     for post in posts:
         instaHelper.download_post(post)
-        postgresDao.set_latest_post_id(user, post.mediaid)
         files = get_files(post)
         for channel in channels:
             print(str(post.mediaid) + ' ' + post.shortcode + ' in ' + str(channel))
             await DiscordHelper.send_post(post, channel, files, client)
+        postgresDao.set_latest_post_id(user, post.mediaid)
 
 
 async def send_stories(storyitems, user, channels):
     for storyitem in storyitems:
         instaHelper.download_storyitem(storyitem)
-        postgresDao.set_latest_story_id(user, storyitem.mediaid)
         files = get_files(storyitem)
         for channel in channels:
             print(str(storyitem.mediaid) + ' ' + storyitem.shortcode + ' in ' + str(channel))
             await DiscordHelper.send_story(storyitem, channel, files, client)
+        postgresDao.set_latest_story_id(user, storyitem.mediaid)
 
 
 def get_files(item):
