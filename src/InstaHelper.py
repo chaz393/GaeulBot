@@ -56,10 +56,11 @@ class InstaHelper:
         return 0
 
     def get_latest_story_id_from_ig(self, userid):
-        stories = self.loader.get_stories(userids=[userid])
-        for story in stories:
-            for storyitem in story.get_items():
-                return storyitem.mediaid
+        if self.stories_enabled:
+            stories = self.loader.get_stories(userids=[userid])
+            for story in stories:
+                for storyitem in story.get_items():
+                    return storyitem.mediaid
         return 0
 
     def download_post(self, post):

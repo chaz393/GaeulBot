@@ -1,13 +1,18 @@
 import discord
 import os
 import contextlib
+import datetime
+import time
+from discord.ext import tasks
 from PostgresDao import PostgresDao
 from InstaHelper import InstaHelper
 from DiscordHelper import DiscordHelper
 from GaeulBotExceptions import UserAlreadyRegisteredException
 from GaeulBotExceptions import UserNotRegisteredException
 from GaeulBotExceptions import UserNotFoundException
-from discord.ext import tasks
+
+
+time.sleep(5)  # give time for db to start up
 
 postgresDao = PostgresDao()
 instaHelper = InstaHelper()
@@ -95,6 +100,17 @@ async def on_message(message):
                 await message.channel.send('{0} is not registered in {1}'.format(username, message.channel.name))
             return
 
+    if message.content.startswith('$users all') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
+        users = postgresDao.get_all_users()
+        users_string = ""
+        for user in users:
+            users_string = users_string + " " + user
+        if len(users) == 0:
+            await message.channel.send("There are no registered users")
+        else:
+            await message.channel.send("Currently registered users: {0}".format(users_string))
+        return
+
     if message.content.startswith('$users'):
         users = postgresDao.get_registered_users_in_channel(message.channel.id)
         users_string = ""
@@ -103,7 +119,8 @@ async def on_message(message):
         if len(users) == 0:
             await message.channel.send("There are no registered users in {0}".format(message.channel.name))
         else:
-            await message.channel.send("Currently registered users in {0}: {1}".format(message.channel.name, users_string))
+            await message.channel.send("Currently registered users in {0}: {1}"
+                                       .format(message.channel.name, users_string))
         return
 
     if message.content.startswith('$getpost'):
@@ -120,11 +137,14 @@ async def on_message(message):
 async def refresh_users(users, refresh_all_users, channel_sent_from):
     if refresh_all_users:
         await DiscordHelper.send_message("refreshing all", channel_sent_from, client)
+        start_time = datetime.datetime.now().timestamp()
     await refresh_posts(users, refresh_all_users, channel_sent_from)
     if instaHelper.stories_enabled:
         await refresh_stories(users, refresh_all_users, channel_sent_from)
     if refresh_all_users:
-        await DiscordHelper.send_message("done refreshing", channel_sent_from, client)
+        end_time = datetime.datetime.now().timestamp()
+        duration = round(end_time - start_time, 1)
+        await DiscordHelper.send_message("done refreshing in {0}s".format(duration), channel_sent_from, client)
 
 
 async def refresh_posts(users, refresh_all_users, channel_sent_from):
@@ -212,7 +232,7 @@ def get_files(item):
     return files
 
 
-async def print_auto_refresh_message(start):
+async def print_auto_refresh_message(start, duration):
     channel_id = os.getenv('REFRESH_ALL_CHANNEL')
     if '{channel_id}' not in channel_id and len(channel_id) > 0:
         try:
@@ -220,7 +240,9 @@ async def print_auto_refresh_message(start):
             if start:
                 await DiscordHelper.send_message("refreshing all", refresh_all_channel, client)
             else:
-                await DiscordHelper.send_message("done refreshing", refresh_all_channel, client)
+                await DiscordHelper.send_message("done refreshing in {0}s".format(duration),
+                                                 refresh_all_channel,
+                                                 client)
         except Exception as e:
             print(e)
             pass
@@ -234,15 +256,19 @@ async def auto_refresh():
         if not first_refresh:
             all_users = postgresDao.get_all_users()
             print('auto refreshing all users')
-            await print_auto_refresh_message(True)
+            await print_auto_refresh_message(True, None)
+            start_time = datetime.datetime.now().timestamp()
             await refresh_users(all_users, True, None)
-            await print_auto_refresh_message(False)
+            end_time = datetime.datetime.now().timestamp()
+            duration = round(end_time - start_time, 1)
+            await print_auto_refresh_message(False, duration)
         else:
             first_refresh = False
 
 
 if __name__ == "__main__":
     try:
+        postgresDao.attempt_migrations()
         auto_refresh.start()
         client.run(os.getenv('DISCORD_TOKEN'))
     finally:
