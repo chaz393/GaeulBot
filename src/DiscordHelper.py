@@ -1,4 +1,6 @@
 import discord
+import os
+from discord import errors
 from datetime import timezone
 import pytz
 
@@ -27,5 +29,27 @@ class DiscordHelper:
         try:
             channel = client.get_channel(channel_id)
             await channel.send(message)
+        except errors.Forbidden:
+            print('Can\'t send message in {0}, permission denied'.format(channel_id))
         except Exception as e:
             print(e)
+
+    @staticmethod
+    def user_has_mod_role(user):
+        for role in user.roles:
+            if role.name.lower().contains("mod"):
+                return True
+        return False
+
+    @staticmethod
+    def user_is_allowed_to_register(user, user_whitelisted, guild):
+        return user.id == guild.owner.id or \
+               user_whitelisted or \
+               DiscordHelper.user_has_mod_role(user) or \
+               str(user.id) == os.getenv('BOT_OWNER_ID')
+
+    @staticmethod
+    def user_is_mod(user, guild):
+        return user.id == guild.owner.id or \
+               DiscordHelper.user_has_mod_role(user) or \
+               str(user.id) == os.getenv('BOT_OWNER_ID')

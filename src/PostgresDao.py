@@ -5,7 +5,7 @@ from DBMigrations import DBMigrations
 
 class PostgresDao:
 
-    db_version = 2
+    db_version = 3
     dbMigrations = DBMigrations()
 
     def __init__(self):
@@ -17,7 +17,7 @@ class PostgresDao:
 
     def attempt_migrations(self):
         current_version = self.get_db_version()
-        print("current db version: {0}".format(current_version))
+        print("current db version: {0}, target db version {1}".format(current_version, self.db_version))
         if current_version < self.db_version:
             for migrate_from in range(current_version, self.db_version):
                 print('migrating db from {0} to {1}'.format(migrate_from, migrate_from + 1))
@@ -99,3 +99,28 @@ class PostgresDao:
         for row in rows:
             channels.append(row[0])
         return channels
+
+    def user_is_whitelisted(self, server_id, user_id):
+        self.cursor.execute("SELECT * FROM whitelist WHERE server_id = {0} AND user_id = {1}"
+                            .format(server_id, user_id))
+        rows = self.cursor.fetchall()
+        if len(rows) > 0:
+            return True
+        else:
+            return False
+
+    def whitelist_user(self, server_id, user_id):
+        self.cursor.execute("INSERT INTO whitelist(server_id, user_id) VALUES({0}, {1})".format(server_id, user_id))
+        self.conn.commit()
+
+    def un_whitelist_user(self, server_id, user_id):
+        self.cursor.execute("DELETE FROM whitelist WHERE server_id = {0} AND user_id = {1}".format(server_id, user_id))
+        self.conn.commit()
+
+    def get_whitelisted_user_ids_in_server(self, server_id):
+        self.cursor.execute("SELECT user_id FROM whitelist WHERE server_id = {0}".format(server_id))
+        rows = self.cursor.fetchall()
+        user_ids = []
+        for row in rows:
+            user_ids.append(row[0])
+        return user_ids

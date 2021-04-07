@@ -4,6 +4,7 @@ class DBMigrations:
 
     def __init__(self):
         self.migrations[1] = self.one_to_two
+        self.migrations[2] = self.two_to_three
 
     def one_to_two(self, conn):
         cursor = conn.cursor()
@@ -19,4 +20,10 @@ class DBMigrations:
             channel = row[0].split(',')[1][:-1]
             cursor.execute("INSERT INTO registrations(username, channel) VALUES('{0}', {1});".format(username, channel))
         cursor.execute("DROP TABLE username_to_channel")
+        conn.commit()
+
+    def two_to_three(self, conn):
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE whitelist (key serial PRIMARY KEY, server_id BIGINT NOT NULL, user_id BIGINT NOT NULL)")
+        cursor.execute("UPDATE app_info SET dbversion = 3")
         conn.commit()

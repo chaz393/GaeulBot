@@ -10,13 +10,18 @@ from DiscordHelper import DiscordHelper
 from GaeulBotExceptions import UserAlreadyRegisteredException
 from GaeulBotExceptions import UserNotRegisteredException
 from GaeulBotExceptions import UserNotFoundException
+from GaeulBotExceptions import UserAlreadyWhitelistedException
+from GaeulBotExceptions import UserNotWhitelistedException
 
 
 time.sleep(5)  # give time for db to start up
 
 postgresDao = PostgresDao()
 instaHelper = InstaHelper()
-client = discord.Client()
+intents = discord.Intents.default()
+intents.members = True
+intents.guilds = True
+client = discord.Client(intents=intents)
 first_refresh = True
 help_text = 'Use $register {username} to register a user. ($register p_fall99) \n' \
             'Use $refresh to refresh the current users. \n' \
@@ -30,108 +35,203 @@ help_text = 'Use $register {username} to register a user. ($register p_fall99) \
 async def on_ready():
     print('logged in as {0.user}'.format(client))
     await client.change_presence(activity=discord.Game(name="$help"))
+    channel_id = os.getenv('REFRESH_ALL_CHANNEL')
+    if '{channel_id}' not in channel_id and len(channel_id) > 0:
+        try:
+            refresh_all_channel = int(os.getenv('REFRESH_ALL_CHANNEL'))
+            await DiscordHelper.send_message('Online', refresh_all_channel, client)
+        except:
+            pass
 
 
 @client.event
 async def on_message(message):
+    msg = message.content
+    channel_name = message.channel.name
+    channel_id = message.channel.id
+
     if message.author == client.user:
         return
 
-    if message.content.startswith('$ping'):
-        await message.channel.send('pong')
+    if msg.startswith('$ping'):
+        await DiscordHelper.send_message('pong', channel_id, client)
         return
 
-    if message.content.startswith('$help'):
-        await message.channel.send(help_text)
+    if msg.startswith('$help'):
+        await DiscordHelper.send_message(help_text, channel_id, client)
         return
 
-    if message.content.startswith('$refresh all') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
-        print("refreshing all, called in {0} {1}".format(message.channel.name, str(message.channel.id)))
+    if msg.startswith('$refresh all') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
+        print("refreshing all, called in {0} {1}".format(channel_name, str(channel_id)))
         all_users = postgresDao.get_all_users()
         if len(all_users) == 0:
-            await message.channel.send("There are no registered users")
+            await DiscordHelper.send_message('There are no registered users', channel_id, client)
             return
         else:
-            await refresh_users(all_users, True, message.channel.id)
+            await refresh_users(all_users, True, channel_id)
             return
 
-    if message.content.startswith('$refresh'):
-        print("refreshing users in {0} {1}".format(message.channel.name, str(message.channel.id)))
-        users = postgresDao.get_registered_users_in_channel(message.channel.id)
+    if msg.startswith('$refresh'):
+        print("refreshing users in {0} {1}".format(channel_name, str(channel_id)))
+        users = postgresDao.get_registered_users_in_channel(channel_id)
         if len(users) == 0:
-            await message.channel.send("There are no registered users in {}".format(message.channel.name))
+            await DiscordHelper.send_message('There are no registered users in {0}'.format(channel_name),
+                                             channel_id,
+                                             client)
             return
         else:
-            await refresh_users(users, False, message.channel.id)
+            await refresh_users(users, False, channel_id)
             return
 
-    if message.content.startswith('$register'):
-        if len(message.content.split(' ')) == 2:  # if it has 2 args (command and username)
-            username = message.content.split(' ')[1]
-            print("registering {0} in {1} {2}".format(username, message.channel.name, str(message.channel.id)))
+    if msg.startswith('$register') and \
+            DiscordHelper.user_is_allowed_to_register(message.author,
+                                                      postgresDao.user_is_whitelisted(message.guild.id,
+                                                                                      message.author.id),
+                                                      message.guild):
+        if len(msg.split(' ')) == 2:  # if it has 2 args (command and username)
+            username = msg.split(' ')[1]
+            print("registering {0} in {1} {2}".format(username, channel_name, str(channel_id)))
             try:
-                register_user(username, message.channel.id)
+                register_user(username, channel_id)
                 print("{0} has been registered".format(username))
-                await message.channel.send('{0} has been registered'.format(username))
+                await DiscordHelper.send_message('{0} has been registered'.format(username), channel_id, client)
                 return
             except UserAlreadyRegisteredException:
-                print("{0} is already registered in {1}".format(username, message.channel.name))
-                await message.channel.send("{0} is already registered in {1}".format(username, message.channel.name))
+                print("{0} is already registered in {1}".format(username, channel_name))
+                await DiscordHelper.send_message("{0} is already registered in {1}".format(username, channel_name),
+                                                 channel_id,
+                                                 client)
                 return
             except UserNotFoundException:
                 print("{0} was not found on instagram, check the spelling".format(username))
-                await message.channel.send("{0} was not found on instagram, check the spelling".format(username))
+                await DiscordHelper.send_message("{0} was not found on instagram, check the spelling".format(username),
+                                                 channel_id,
+                                                 client)
                 return
             except Exception as e:
                 print(e)
-                await message.channel.send("An error has occurred")
+                await DiscordHelper.send_message("An error has occurred", channel_id, client)
                 return
 
-    if message.content.startswith('$unregister'):
-        if len(message.content.split(' ')) == 2:  # if it has 2 args (command and username)
-            username = message.content.split(' ')[1]
-            print("unregistering {0} in {1} {2}".format(username, message.channel.name, str(message.channel.id)))
+    if msg.startswith('$unregister') and \
+            DiscordHelper.user_is_allowed_to_register(message.author,
+                                                      postgresDao.user_is_whitelisted(message.guild.id,
+                                                                                      message.author.id),
+                                                      message.guild):
+        if len(msg.split(' ')) == 2:  # if it has 2 args (command and username)
+            username = msg.split(' ')[1]
+            print("unregistering {0} in {1} {2}".format(username, channel_name, str(channel_id)))
             try:
-                unregister_user(username, message.channel.id)
-                print('{0} was unregistered from {1}'.format(username, message.channel.name))
-                await message.channel.send('{0} was unregistered from {1}'.format(username, message.channel.name))
+                unregister_user(username, channel_id)
+                print('{0} was unregistered from {1}'.format(username, channel_name))
+                await DiscordHelper.send_message('{0} was unregistered from {1}'.format(username, channel_name),
+                                                 channel_id,
+                                                 client)
             except UserNotRegisteredException:
-                print('{0} is not registered in {1}'.format(username, message.channel.name))
-                await message.channel.send('{0} is not registered in {1}'.format(username, message.channel.name))
+                print('{0} is not registered in {1}'.format(username, channel_name))
+                await DiscordHelper.send_message('{0} is not registered in {1}'.format(username, channel_name),
+                                                 channel_id,
+                                                 client)
             return
 
-    if message.content.startswith('$users all') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
+    if msg.startswith('$users all') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
         users = postgresDao.get_all_users()
         users_string = ""
         for user in users:
             users_string = users_string + " " + user
         if len(users) == 0:
-            await message.channel.send("There are no registered users")
+            await DiscordHelper.send_message("There are no registered users", channel_id, client)
         else:
-            await message.channel.send("Currently registered users: {0}".format(users_string))
+            await DiscordHelper.send_message("Currently registered users: {0}".format(users_string), channel_id, client)
         return
 
-    if message.content.startswith('$users'):
-        users = postgresDao.get_registered_users_in_channel(message.channel.id)
+    if msg.startswith('$users'):
+        users = postgresDao.get_registered_users_in_channel(channel_id)
         users_string = ""
         for user in users:
             users_string = users_string + " " + user
         if len(users) == 0:
-            await message.channel.send("There are no registered users in {0}".format(message.channel.name))
+            await DiscordHelper.send_message("There are no registered users in {0}".format(channel_name),
+                                             channel_id,
+                                             client)
         else:
-            await message.channel.send("Currently registered users in {0}: {1}"
-                                       .format(message.channel.name, users_string))
+            await DiscordHelper.send_message("Currently registered users in {0}: {1}"
+                                             .format(channel_name, users_string),
+                                             channel_id,
+                                             client)
         return
 
-    if message.content.startswith('$getpost'):
-        if len(message.content.split(' ')) == 2:  # if it has 2 args (command and username)
-            shortcode = message.content.split(' ')[1]
-            print("getting post {0} in {1} {2}".format(shortcode, message.channel.name, message.channel.id))
+    if msg.startswith('$getpost'):
+        if len(msg.split(' ')) == 2:  # if it has 2 args (command and shortcode)
+            shortcode = msg.split(' ')[1]
+            print("getting post {0} in {1} {2}".format(shortcode, channel_name, channel_id))
             post = instaHelper.get_post_from_shortcode(shortcode)
             instaHelper.download_post(post)
             files = get_files(post)
-            await DiscordHelper.send_post(post, message.channel.id, files, client)
+            await DiscordHelper.send_post(post, channel_id, files, client)
         return
+
+    if msg.startswith('$whitelist') and \
+            DiscordHelper.user_is_mod(message.author, message.guild) and \
+            len(msg.split(' ')) == 2:  # if it has 2 args (command and username)
+        username = msg.split(' ')[1]
+        user_id = strip_username_to_user_id(username)
+        try:
+            whitelist_user(message.guild.id, user_id)
+            await DiscordHelper.send_message('{0} has been whitelisted in this server'.format(username),
+                                             channel_id,
+                                             client)
+            return
+        except UserAlreadyWhitelistedException:
+            await DiscordHelper.send_message('{0} is already whitelisted in this server'.format(username),
+                                             channel_id,
+                                             client)
+            return
+        except:
+            await DiscordHelper.send_message('An error has occurred', channel_id, client)
+            return
+
+    if msg.startswith('$unwhitelist') and DiscordHelper.user_is_mod(message.author, message.guild):
+        if len(msg.split(' ')) == 2:  # if it has 2 args (command and username)
+            username = msg.split(' ')[1]
+            user_id = strip_username_to_user_id(username)
+            try:
+                unwhitelist_user(message.guild.id, user_id)
+                await DiscordHelper.send_message('{0} has been unwhitelisted in this server'.format(username),
+                                                 channel_id,
+                                                 client)
+                return
+            except UserNotWhitelistedException:
+                await DiscordHelper.send_message('{0} is not whitelisted in this server'.format(username),
+                                                 channel_id,
+                                                 client)
+                return
+            except:
+                await DiscordHelper.send_message('An error has occurred', channel_id, client)
+                return
+
+    if msg.startswith('$whitelist') and \
+            DiscordHelper.user_is_mod(message.author, message.guild) and \
+            len(msg.split(' ')) == 1:  # if it is only the whitelist command
+        try:
+            users = get_whitelisted_users(message.guild.id)
+            users_string = ""
+            for user in users:
+                users_string = users_string + " " + user
+            if len(users) == 0:
+                await DiscordHelper.send_message("There are no whitelisted users in this server.",
+                                                 channel_id,
+                                                 client)
+                return
+            else:
+                await DiscordHelper.send_message("Currently whitelisted users in this server: {0}"
+                                                 .format(users_string),
+                                                 channel_id,
+                                                 client)
+                return
+        except:
+            await DiscordHelper.send_message('An error has occurred', channel_id, client)
+            return
 
 
 async def refresh_users(users, refresh_all_users, channel_sent_from):
@@ -230,6 +330,39 @@ def get_files(item):
             if ".jpg" in file or ".mp4" in file:
                 files.append(dirpath + "/" + file)
     return files
+
+
+def whitelist_user(server_id, user_id):
+    if postgresDao.user_is_whitelisted(server_id, user_id):
+        raise UserAlreadyWhitelistedException
+
+    postgresDao.whitelist_user(server_id, user_id)
+
+
+def unwhitelist_user(server_id, user_id):
+    if not postgresDao.user_is_whitelisted(server_id, user_id):
+        raise UserNotWhitelistedException
+
+    postgresDao.un_whitelist_user(server_id, user_id)
+
+
+def get_whitelisted_users(server_id):
+    user_ids = postgresDao.get_whitelisted_user_ids_in_server(server_id)
+    usernames = []
+    for user_id in user_ids:
+        try:
+            user = client.get_user(user_id)
+            usernames.append(user.name)
+        except:
+            continue
+    return usernames
+
+
+def strip_username_to_user_id(username):
+    user_id = username
+    for char in '<>@!':
+        user_id = user_id.replace(char, '')
+    return user_id
 
 
 async def print_auto_refresh_message(start, duration):
