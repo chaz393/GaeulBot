@@ -235,9 +235,9 @@ async def on_message(message):
 
     if msg.startswith('$stories'):
         if instaHelper.stories_enabled:
-            await DiscordHelper.send_message('stories are currently disabled', channel_id, client)
-        else:
             await DiscordHelper.send_message('stories are currently enabled', channel_id, client)
+        else:
+            await DiscordHelper.send_message('stories are currently disabled', channel_id, client)
 
 
 async def refresh_users(users, refresh_all_users, channel_sent_from):
