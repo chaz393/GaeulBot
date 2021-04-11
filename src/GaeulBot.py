@@ -12,6 +12,7 @@ from GaeulBotExceptions import UserNotRegisteredException
 from GaeulBotExceptions import UserNotFoundException
 from GaeulBotExceptions import UserAlreadyWhitelistedException
 from GaeulBotExceptions import UserNotWhitelistedException
+from GaeulBotExceptions import FilesNotFoundException
 
 
 time.sleep(5)  # give time for db to start up
@@ -166,8 +167,7 @@ async def on_message(message):
             shortcode = msg.split(' ')[1]
             print("getting post {0} in {1} {2}".format(shortcode, channel_name, channel_id))
             post = instaHelper.get_post_from_shortcode(shortcode)
-            instaHelper.download_post(post)
-            files = get_files(post)
+            files = get_post_files(post)
             await DiscordHelper.send_post(post, channel_id, files, client)
         return
 
@@ -232,6 +232,12 @@ async def on_message(message):
         except:
             await DiscordHelper.send_message('An error has occurred', channel_id, client)
             return
+
+    if msg.startswith('$stories'):
+        if instaHelper.stories_enabled:
+            await DiscordHelper.send_message('stories are currently disabled')
+        else:
+            await DiscordHelper.send_message('stories are currently enabled')
 
 
 async def refresh_users(users, refresh_all_users, channel_sent_from):
@@ -305,9 +311,9 @@ def unregister_user(username, channel_id):
 async def send_posts(posts, user, channels):
     for post in posts:
         instaHelper.download_post(post)
-        files = get_files(post)
+        files = get_post_files(post)
         for channel in channels:
-            print(str(post.mediaid) + ' ' + post.shortcode + ' in ' + str(channel))
+            print('{0} {1} in {2}'.format(post.mediaid, post.shortcode, channel))
             await DiscordHelper.send_post(post, channel, files, client)
         postgresDao.set_latest_post_id(user, post.mediaid)
 
@@ -317,9 +323,23 @@ async def send_stories(storyitems, user, channels):
         instaHelper.download_storyitem(storyitem)
         files = get_files(storyitem)
         for channel in channels:
-            print(str(storyitem.mediaid) + ' ' + storyitem.shortcode + ' in ' + str(channel))
+            print('{0} {1} in {2}'.format(storyitem.mediaid, storyitem.shortcode, channel))
             await DiscordHelper.send_story(storyitem, channel, files, client)
         postgresDao.set_latest_story_id(user, storyitem.mediaid)
+
+
+def get_post_files(post):
+    try:
+        files = get_files(post)
+        if len(files) == post.mediacount:
+            print('skipping download for {0}, files already exist'.format(post.shortcode))
+            return files
+        else:
+            raise FilesNotFoundException
+    except:
+        print('downloading files for {0}'.format(post.shortcode))
+        instaHelper.download_post(post)
+        return get_files(post)
 
 
 def get_files(item):
@@ -329,6 +349,7 @@ def get_files(item):
         for file in filenames:
             if ".jpg" in file or ".mp4" in file:
                 files.append(dirpath + "/" + file)
+    files.sort()
     return files
 
 
@@ -381,7 +402,21 @@ async def print_auto_refresh_message(start, duration):
             pass
 
 
-@tasks.loop(minutes=60)
+def get_refresh_interval():
+    refresh_interval = os.getenv('REFRESH_INTERVAL')
+    if len(refresh_interval) == 0:
+        print('refresh interval not specified, defaulting to 60 minutes')
+        return 60
+    else:
+        try:
+            print('refresh interval set to {0} minutes'.format(refresh_interval))
+            return int(refresh_interval)
+        except:
+            print('refresh interval is invalid, defaulting to 60 minutes')
+            return 60
+
+
+@tasks.loop(minutes=get_refresh_interval())
 async def auto_refresh():
     with contextlib.suppress(Exception):
         global first_refresh

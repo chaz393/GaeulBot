@@ -16,3 +16,7 @@ class UserAlreadyWhitelistedException(Exception):
 
 class UserNotWhitelistedException(Exception):
     pass
+
+
+class FilesNotFoundException(Exception):
+    pass

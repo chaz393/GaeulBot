@@ -9,12 +9,21 @@ class DiscordHelper:
 
     @staticmethod
     async def send_post(post, channel_id, files, client):
-        date = post.date.replace(tzinfo=timezone.utc).astimezone(tz=pytz.timezone('Asia/Seoul')).strftime("%y%m%d")
-        post_url = 'https://www.instagram.com/p/{0}/'.format(post.shortcode)
         channel = client.get_channel(channel_id)
-        await channel.send('`{0} {1} {2} \n {3}`'.format(date, post.owner_username, post_url, post.caption))
+        message = DiscordHelper.build_post_message(post)
+        await channel.send(message)
         for file_on_disk in files:
             await channel.send(file=discord.File(file_on_disk))
+
+    @staticmethod
+    def build_post_message(post):
+        date = post.date.replace(tzinfo=timezone.utc).astimezone(tz=pytz.timezone('Asia/Seoul')).strftime("%y%m%d")
+        post_url = 'https://www.instagram.com/p/{0}/'.format(post.shortcode)
+        message = ('`{0} {1} {2}'.format(date, post.owner_username, post_url))
+        if len(post.caption) > 0:
+            message = message + '\n{0}'.format(post.caption)
+        message = message + '`'
+        return message
 
     @staticmethod
     async def send_story(storyitem, channel_id, files, client):

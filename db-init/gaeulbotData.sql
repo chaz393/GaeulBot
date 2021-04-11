@@ -17,4 +17,10 @@ CREATE TABLE app_info (
   dbversion INT
 );
 
-INSERT INTO app_info(dbversion) VALUES(2);
+CREATE TABLE whitelist (
+  key serial PRIMARY KEY,
+  server_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL
+);
+
+INSERT INTO app_info(dbversion) VALUES(3);
