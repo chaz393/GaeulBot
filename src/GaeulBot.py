@@ -409,8 +409,9 @@ def get_refresh_interval():
         return 60
     else:
         try:
+            int_interval = int(refresh_interval)
             print('refresh interval set to {0} minutes'.format(refresh_interval))
-            return int(refresh_interval)
+            return int_interval
         except:
             print('refresh interval is invalid, defaulting to 60 minutes')
             return 60
