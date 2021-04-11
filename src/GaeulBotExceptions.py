@@ -8,3 +8,15 @@ class UserNotRegisteredException(Exception):
 
 class UserNotFoundException(Exception):
     pass
+
+
+class UserAlreadyWhitelistedException(Exception):
+    pass
+
+
+class UserNotWhitelistedException(Exception):
+    pass
+
+
+class FilesNotFoundException(Exception):
+    pass
