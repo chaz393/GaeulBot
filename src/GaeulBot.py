@@ -36,11 +36,11 @@ help_text = 'Use $register {username} to register a user. ($register p_fall99) \
 async def on_ready():
     print('logged in as {0.user}'.format(client))
     await client.change_presence(activity=discord.Game(name="$help"))
-    channel_id = os.getenv('REFRESH_ALL_CHANNEL')
-    if '{channel_id}' not in channel_id and len(channel_id) > 0:
+    channel_id_string = os.getenv('REFRESH_ALL_CHANNEL')
+    if '{channel_id}' not in channel_id_string and len(channel_id_string) > 0:
         try:
-            refresh_all_channel = int(os.getenv('REFRESH_ALL_CHANNEL'))
-            await DiscordHelper.send_message('Online', refresh_all_channel, client)
+            channel_id = int(os.getenv('REFRESH_ALL_CHANNEL'))
+            await DiscordHelper.send_message('Online', channel_id, client)
         except:
             pass
 
@@ -105,7 +105,7 @@ async def on_message(message):
                 return
             except UserNotFoundException:
                 print("{0} was not found on instagram, check the spelling".format(username))
-                await DiscordHelper.send_message("{0} was not found on instagram, check the spelling".format(username),
+                await DiscordHelper.send_message("{0} was not found on Instagram, check the spelling".format(username),
                                                  channel_id,
                                                  client)
                 return
@@ -173,7 +173,7 @@ async def on_message(message):
 
     if msg.startswith('$whitelist') and \
             DiscordHelper.user_is_mod(message.author, message.guild) and \
-            len(msg.split(' ')) == 2:  # if it has 2 args (command and username)
+            len(msg.split(' ')) == 2:  # if it has 2 args (command and user @)
         username = msg.split(' ')[1]
         user_id = strip_username_to_user_id(username)
         try:
@@ -191,24 +191,25 @@ async def on_message(message):
             await DiscordHelper.send_message('An error has occurred', channel_id, client)
             return
 
-    if msg.startswith('$unwhitelist') and DiscordHelper.user_is_mod(message.author, message.guild):
-        if len(msg.split(' ')) == 2:  # if it has 2 args (command and username)
-            username = msg.split(' ')[1]
-            user_id = strip_username_to_user_id(username)
-            try:
-                unwhitelist_user(message.guild.id, user_id)
-                await DiscordHelper.send_message('{0} has been unwhitelisted in this server'.format(username),
-                                                 channel_id,
-                                                 client)
-                return
-            except UserNotWhitelistedException:
-                await DiscordHelper.send_message('{0} is not whitelisted in this server'.format(username),
-                                                 channel_id,
-                                                 client)
-                return
-            except:
-                await DiscordHelper.send_message('An error has occurred', channel_id, client)
-                return
+    if msg.startswith('$unwhitelist') and \
+            DiscordHelper.user_is_mod(message.author, message.guild) and \
+            len(msg.split(' ')) == 2:  # if it has 2 args (command and user @)
+        username = msg.split(' ')[1]
+        user_id = strip_username_to_user_id(username)
+        try:
+            unwhitelist_user(message.guild.id, user_id)
+            await DiscordHelper.send_message('{0} has been unwhitelisted in this server'.format(username),
+                                             channel_id,
+                                             client)
+            return
+        except UserNotWhitelistedException:
+            await DiscordHelper.send_message('{0} is not whitelisted in this server'.format(username),
+                                             channel_id,
+                                             client)
+            return
+        except:
+            await DiscordHelper.send_message('An error has occurred', channel_id, client)
+            return
 
     if msg.startswith('$whitelist') and \
             DiscordHelper.user_is_mod(message.author, message.guild) and \
