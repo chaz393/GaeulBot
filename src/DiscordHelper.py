@@ -20,7 +20,7 @@ class DiscordHelper:
         date = post.date.replace(tzinfo=timezone.utc).astimezone(tz=pytz.timezone('Asia/Seoul')).strftime("%y%m%d")
         post_url = 'https://www.instagram.com/p/{0}/'.format(post.shortcode)
         message = ('`{0} {1} {2}'.format(date, post.owner_username, post_url))
-        if len(post.caption) > 0:
+        if post.caption is not None and len(post.caption) > 0:
             message = message + '\n{0}'.format(post.caption)
         message = message + '`'
         return message
