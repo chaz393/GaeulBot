@@ -3,6 +3,7 @@ import os
 import contextlib
 import datetime
 import time
+import traceback
 from discord.ext import tasks
 from PostgresDao import PostgresDao
 from InstaHelper import InstaHelper
@@ -167,8 +168,11 @@ async def on_message(message):
             shortcode = msg.split(' ')[1]
             print("getting post {0} in {1} {2}".format(shortcode, channel_name, channel_id))
             post = instaHelper.get_post_from_shortcode(shortcode)
-            files = get_post_files(post)
-            await DiscordHelper.send_post(post, channel_id, files, client)
+            try:
+                files = get_post_files(post)
+                await DiscordHelper.send_post(post, channel_id, files, client)
+            except:
+                DiscordHelper.send_message('There was an issue getting post {0}'.format(shortcode))
         return
 
     if msg.startswith('$whitelist') and \
@@ -311,8 +315,21 @@ def unregister_user(username, channel_id):
 
 async def send_posts(posts, user, channels):
     for post in posts:
-        instaHelper.download_post(post)
-        files = get_post_files(post)
+        try:
+            files = get_post_files(post)
+        except:
+            print('There was an issue downloading {0}'.format(post.shortcode))
+            traceback.print_exc()
+            postgresDao.set_latest_post_id(user, post.mediaid)
+            # this one is rough, if the download fails because an actual connection issue, it'll be skipped forever.
+            # the other option is to not mark it as latest, but in any case that there is another post by this user,
+            # that post will be set at the latest and this one will still be skipped forever
+            # this is the most consistent way to handle this issue
+            # this all came about because trying to download CNiXcG5nwpc was throwing
+            # instaloader.exceptions.ConnectionException: download_pic(): HTTP error code 429
+            # this post is an IGTV post and maybe that has something to do with it but I don't see a way to
+            # identify them before they fail to download.
+            continue
         for channel in channels:
             print('{0} {1} in {2}'.format(post.mediaid, post.shortcode, channel))
             await DiscordHelper.send_post(post, channel, files, client)
