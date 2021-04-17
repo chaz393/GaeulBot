@@ -11,9 +11,18 @@ class DiscordHelper:
     async def send_post(post, channel_id, files, client):
         channel = client.get_channel(channel_id)
         message = DiscordHelper.build_post_message(post)
-        await channel.send(message)
+        header_message = await channel.send(message)
+        skipped = 0
         for file_on_disk in files:
-            await channel.send(file=discord.File(file_on_disk))
+            size = os.path.getsize(file_on_disk)/1024/1024  # bytes to MB
+            if size < 8:  # 8MB is the max file size allowed for a non-nitro account
+                await channel.send(file=discord.File(file_on_disk))
+            else:
+                skipped = skipped + 1
+                print('{0} is {1}M, skipping file'.format(file_on_disk, round(size, 2)))
+        if skipped == len(files):
+            print('deleting post {0}, all messages were skipped'.format(post.shortcode))
+            await header_message.delete()
 
     @staticmethod
     def build_post_message(post):
@@ -29,9 +38,18 @@ class DiscordHelper:
     async def send_story(storyitem, channel_id, files, client):
         date = storyitem.date.replace(tzinfo=timezone.utc).astimezone(tz=pytz.timezone('Asia/Seoul')).strftime("%y%m%d")
         channel = client.get_channel(channel_id)
-        await channel.send('`{0} {1} IG Story`'.format(date, storyitem.owner_username))
+        header_message = await channel.send('`{0} {1} IG Story`'.format(date, storyitem.owner_username))
+        skipped = 0
         for file_on_disk in files:
-            await channel.send(file=discord.File(file_on_disk))
+            size = os.path.getsize(file_on_disk)/1024/1024  # bytes to MB
+            if size < 8:  # 8MB is the max file size allowed for a non-nitro account
+                await channel.send(file=discord.File(file_on_disk))
+            else:
+                skipped = skipped + 1
+                print('{0} is {1}M, skipping file'.format(file_on_disk, round(size, 2)))
+        if skipped == len(files):
+            print('deleting story {0}, all messages were skipped'.format(storyitem.shortcode))
+            await header_message.delete()
 
     @staticmethod
     async def send_message(message, channel_id, client):
