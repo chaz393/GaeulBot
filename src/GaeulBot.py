@@ -172,7 +172,7 @@ async def on_message(message):
                 files = get_post_files(post)
                 await DiscordHelper.send_post(post, channel_id, files, client)
             except:
-                DiscordHelper.send_message('There was an issue getting post {0}'.format(shortcode))
+                await DiscordHelper.send_message('There was an issue getting post {0}'.format(shortcode))
         return
 
     if msg.startswith('$whitelist') and \
