@@ -21,7 +21,10 @@ class DiscordHelper:
                 skipped = skipped + 1
                 print('{0} is {1}M, skipping file'.format(file_on_disk, round(size, 2)))
         if skipped == len(files):
-            print('deleting post {0}, all messages were skipped'.format(post.shortcode))
+            if skipped == 0:
+                print('deleting post {0}, no files found'.format(post.shortcode))
+            else:
+                print('deleting post {0}, all messages were skipped'.format(post.shortcode))
             await header_message.delete()
 
     @staticmethod
@@ -48,7 +51,10 @@ class DiscordHelper:
                 skipped = skipped + 1
                 print('{0} is {1}M, skipping file'.format(file_on_disk, round(size, 2)))
         if skipped == len(files):
-            print('deleting story {0}, all messages were skipped'.format(storyitem.shortcode))
+            if skipped == 0:
+                print('deleting story {0}, no files found'.format(storyitem.shortcode))
+            else:
+                print('deleting story {0}, all messages were skipped'.format(storyitem.shortcode))
             await header_message.delete()
 
     @staticmethod
