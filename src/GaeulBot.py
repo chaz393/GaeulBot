@@ -168,8 +168,8 @@ async def on_message(message):
         if len(msg.split(' ')) == 2:  # if it has 2 args (command and shortcode)
             shortcode = msg.split(' ')[1]
             print("getting post {0} in {1} {2}".format(shortcode, channel_name, channel_id))
-            post = instaHelper.get_post_from_shortcode(shortcode)
             try:
+                post = instaHelper.get_post_from_shortcode(shortcode)
                 files = get_post_files(post)
                 await DiscordHelper.send_post(post, channel_id, files, client)
             except:
