@@ -2,3 +2,4 @@
 .idea/
 src/__pycache__/
 devtools/
+docker-compose.yml

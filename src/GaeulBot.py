@@ -5,6 +5,7 @@ import datetime
 import time
 import traceback
 from discord.ext import tasks
+from ItemType import ItemType
 from PostgresDao import PostgresDao
 from InstaHelper import InstaHelper
 from DiscordHelper import DiscordHelper
@@ -172,7 +173,9 @@ async def on_message(message):
                 files = get_post_files(post)
                 await DiscordHelper.send_post(post, channel_id, files, client)
             except:
-                await DiscordHelper.send_message('There was an issue getting post {0}'.format(shortcode))
+                await DiscordHelper.send_message('There was an issue getting post {0}'.format(shortcode),
+                                                 channel_id,
+                                                 client)
         return
 
     if msg.startswith('$whitelist') and \
@@ -254,6 +257,7 @@ async def refresh_users(users, refresh_all_users, channel_sent_from):
         await refresh_stories(users, refresh_all_users, channel_sent_from)
     if refresh_all_users:
         end_time = datetime.datetime.now().timestamp()
+        # noinspection PyUnboundLocalVariable
         duration = round(end_time - start_time, 1)
         await DiscordHelper.send_message("done refreshing in {0}s".format(duration), channel_sent_from, client)
 
@@ -339,7 +343,7 @@ async def send_posts(posts, user, channels):
 async def send_stories(storyitems, user, channels):
     for storyitem in storyitems:
         instaHelper.download_storyitem(storyitem)
-        files = get_files(storyitem)
+        files = get_files(storyitem, ItemType.STORY)
         for channel in channels:
             print('{0} {1} in {2}'.format(storyitem.mediaid, storyitem.shortcode, channel))
             await DiscordHelper.send_story(storyitem, channel, files, client)
@@ -348,7 +352,7 @@ async def send_stories(storyitems, user, channels):
 
 def get_post_files(post):
     try:
-        files = get_files(post)
+        files = get_files(post, ItemType.POST)
         if len(files) == post.mediacount:
             print('skipping download for {0}, files already exist'.format(post.shortcode))
             return files
@@ -357,12 +361,12 @@ def get_post_files(post):
     except:
         print('downloading files for {0}'.format(post.shortcode))
         instaHelper.download_post(post)
-        return get_files(post)
+        return get_files(post, ItemType.POST)
 
 
-def get_files(item):
+def get_files(item, item_type):
     files = []
-    path = os.path.abspath("/downloads/" + item.owner_username + "/" + item.shortcode + "/")
+    path = os.path.abspath("/downloads/{0}/{1}/{2}".format(item.owner_username, item_type.get_name(), item.shortcode))
     for (dirpath, dirnames, filenames) in os.walk(path):
         for file in filenames:
             if ".jpg" in file or ".mp4" in file:

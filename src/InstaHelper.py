@@ -1,11 +1,12 @@
 import instaloader
 import os
+from ItemType import ItemType
 
 
 class InstaHelper:
 
     def __init__(self):
-        self.loader = instaloader.Instaloader(dirname_pattern='/downloads/{profile}/{shortcode}',
+        self.loader = instaloader.Instaloader(dirname_pattern='/downloads/{profile}/{target}/{shortcode}',
                                               filename_pattern='{date}',
                                               save_metadata=False,
                                               download_video_thumbnails=False,
@@ -64,10 +65,10 @@ class InstaHelper:
         return 0
 
     def download_post(self, post):
-        self.loader.download_post(post, post.shortcode)
+        self.loader.download_post(post, ItemType.POST.get_name())
 
     def download_storyitem(self, storyitem):
-        self.loader.download_storyitem(storyitem, storyitem.shortcode)
+        self.loader.download_storyitem(storyitem, ItemType.STORY.get_name())
 
     def get_profile_from_username(self, username):
         return instaloader.Profile.from_username(self.loader.context, username)
