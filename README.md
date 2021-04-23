@@ -2,7 +2,7 @@
 
 clone this project
 
-copy the .example.env file to .env and edit it with your information
+copy the example.env file to .env and edit it with your information
 
 run docker-compose build
 
