@@ -4,6 +4,6 @@ clone this project
 
 copy the example.env file to .env and edit it with your information
 
-run docker-compose build
+copy docker-compose.yml.example to docker-compose.yml
 
-run docker-compose up -d
+run docker-compose up -d --build
