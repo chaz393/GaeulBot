@@ -172,7 +172,9 @@ async def on_message(message):
                 post = instaHelper.get_post_from_shortcode(shortcode)
                 files = get_post_files(post)
                 await DiscordHelper.send_post(post, channel_id, files, client)
-            except:
+            except Exception as e:
+                print('There was an issue getting post {0}'.format(shortcode))
+                print(e)
                 await DiscordHelper.send_message('There was an issue getting post {0}'.format(shortcode),
                                                  channel_id,
                                                  client)
