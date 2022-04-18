@@ -263,6 +263,7 @@ async def on_message(message):
                 return
             if not len(postgresDao.get_channels_for_user(old_username)) > 0:
                 await DiscordHelper.send_message('user is not registered', channel_id, client)
+                return
             postgresDao.update_username(old_username, new_username)
             await DiscordHelper.send_message('Successfully updated {0} to {1}'.format(old_username, new_username),
                                              channel_id, client)
