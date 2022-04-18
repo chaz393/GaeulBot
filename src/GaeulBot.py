@@ -139,9 +139,7 @@ async def on_message(message):
 
     if msg.startswith('$users all') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
         users = postgresDao.get_all_users()
-        users_string = ""
-        for user in users:
-            users_string = users_string + " " + user
+        users_string = get_users_string(users)
         if len(users) == 0:
             await DiscordHelper.send_message("There are no registered users", channel_id, client)
         else:
