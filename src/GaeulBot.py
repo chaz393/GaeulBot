@@ -143,7 +143,7 @@ async def on_message(message):
         if len(users) == 0:
             await DiscordHelper.send_message("There are no registered users", channel_id, client)
         else:
-            await DiscordHelper.send_message("Currently registered users: {0}".format(users_string), channel_id, client)
+            await DiscordHelper.send_message("Currently registered users: ```{0}```".format(users_string), channel_id, client)
         return
 
     if msg.startswith('$users'):
@@ -154,7 +154,7 @@ async def on_message(message):
                                              channel_id,
                                              client)
         else:
-            await DiscordHelper.send_message("Currently registered users in {0}: {1}"
+            await DiscordHelper.send_message("Currently registered users in {0}: ```{1}```"
                                              .format(channel_name, users_string),
                                              channel_id,
                                              client)
@@ -265,6 +265,12 @@ async def on_message(message):
             postgresDao.update_username(old_username, new_username)
             await DiscordHelper.send_message('Successfully updated {0} to {1}'.format(old_username, new_username),
                                              channel_id, client)
+    if msg.startswith('$registrations') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
+        users = postgresDao.get_all_users()
+        for user in users:
+            channels = postgresDao.get_channels_for_user(user)
+            await DiscordHelper.send_message(get_channels_string(user, channels), channel_id, client)
+        return
 
 
 async def refresh_users(users, refresh_all_users, channel_sent_from):
@@ -435,8 +441,16 @@ def get_users_string(users):
             first_time = False
             users_string = user
         else:
-            users_string = users_string + " " + user
+            users_string = users_string + "\n" + user
     return users_string
+
+
+def get_channels_string(user, channels):
+    channels_string = user + ":\n"
+    for channel in channels:
+        guild_name = client.get_channel(channel).guild.name
+        channels_string = channels_string + "<#{0}> - {1}\n".format(channel, guild_name)
+    return channels_string
 
 
 async def print_auto_refresh_message(start, duration):
