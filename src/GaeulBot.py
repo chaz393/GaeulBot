@@ -273,7 +273,6 @@ async def on_message(message):
         return
 
 
-
 async def refresh_users(users, refresh_all_users, channel_sent_from):
     if refresh_all_users:
         await DiscordHelper.send_message("refreshing all", channel_sent_from, client)
@@ -448,8 +447,10 @@ def get_users_string(users):
 
 def get_channels_string(user, channels):
     channels_string = user + ":\n"
+    print(user)
     for channel in channels:
-        channels_string = channels_string + "<#${0}>\n".format(channel)
+        print(channel)
+        channels_string = channels_string + "<#${{0}}>\n".format(channel)
     return channels_string
 
 
