@@ -143,7 +143,7 @@ async def on_message(message):
         if len(users) == 0:
             await DiscordHelper.send_message("There are no registered users", channel_id, client)
         else:
-            await DiscordHelper.send_message("Currently registered users: {0}".format(users_string), channel_id, client)
+            await DiscordHelper.send_message("Currently registered users: ```{0}```".format(users_string), channel_id, client)
         return
 
     if msg.startswith('$users'):
@@ -154,7 +154,7 @@ async def on_message(message):
                                              channel_id,
                                              client)
         else:
-            await DiscordHelper.send_message("Currently registered users in {0}: {1}"
+            await DiscordHelper.send_message("Currently registered users in {0}: ```{1}```"
                                              .format(channel_name, users_string),
                                              channel_id,
                                              client)
@@ -435,7 +435,7 @@ def get_users_string(users):
             first_time = False
             users_string = user
         else:
-            users_string = users_string + " " + user
+            users_string = users_string + "\n" + user
     return users_string
 
 
