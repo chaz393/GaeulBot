@@ -450,7 +450,7 @@ def get_channels_string(user, channels):
     print(user)
     for channel in channels:
         print(channel)
-        channels_string = channels_string + "<#${{0}}>\n".format(channel)
+        channels_string = channels_string + "<#${" + channel + "}>\n"
     return channels_string
 
 
