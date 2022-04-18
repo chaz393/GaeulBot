@@ -150,9 +150,7 @@ async def on_message(message):
 
     if msg.startswith('$users'):
         users = postgresDao.get_registered_users_in_channel(channel_id)
-        users_string = ""
-        for user in users:
-            users_string = users_string + " " + user
+        users_string = get_users_string(users)
         if len(users) == 0:
             await DiscordHelper.send_message("There are no registered users in {0}".format(channel_name),
                                              channel_id,
@@ -248,6 +246,25 @@ async def on_message(message):
             await DiscordHelper.send_message('stories are currently enabled', channel_id, client)
         else:
             await DiscordHelper.send_message('stories are currently disabled', channel_id, client)
+
+    if msg.startswith('$update_username') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
+        if not len(msg.split(' ')) == 3:  # if it has 3 args (command, old username, and new username)
+            await DiscordHelper.send_message('correct usage is \'$update_username old_username new_username\'',
+                                             channel_id, client)
+            return
+        else:
+            old_username = msg.split(' ')[1]
+            new_username = msg.split(' ')[2]
+            if not len(old_username) > 0:
+                await DiscordHelper.send_message('invalid old username', channel_id, client)
+                return
+            if not len(new_username) > 0:
+                await DiscordHelper.send_message('invalid new username', channel_id, client)
+                return
+            postgresDao.update_username(old_username, new_username)
+            await DiscordHelper.send_message('Successfully updated {0} to {1}'.format(old_username, new_username),
+                                             channel_id, client)
+
 
 
 async def refresh_users(users, refresh_all_users, channel_sent_from):
@@ -408,6 +425,18 @@ def strip_username_to_user_id(username):
     for char in '<>@!':
         user_id = user_id.replace(char, '')
     return user_id
+
+
+def get_users_string(users):
+    first_time = True
+    users_string = ""
+    for user in users:
+        if first_time:
+            first_time = False
+            users_string = user
+        else:
+            users_string = users_string + " " + user
+    return users_string
 
 
 async def print_auto_refresh_message(start, duration):

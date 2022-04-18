@@ -124,3 +124,10 @@ class PostgresDao:
         for row in rows:
             user_ids.append(row[0])
         return user_ids
+
+    def update_username(self, old_username, new_username):
+        self.cursor.execute("UPDATE registrations SET username = {0} WHERE username = {1}"
+                            .format(old_username, new_username))
+        self.cursor.execute("UPDATE user_info SET username = {0} WHERE username = {1}"
+                            .format(old_username, new_username))
+        self.conn.commit()
