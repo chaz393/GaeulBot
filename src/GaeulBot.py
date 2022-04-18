@@ -270,7 +270,7 @@ async def on_message(message):
         for user in users:
             channels = postgresDao.get_channels_for_user(user)
             await DiscordHelper.send_message(get_channels_string(user, channels), channel_id, client)
-            return
+        return
 
 
 
@@ -447,10 +447,9 @@ def get_users_string(users):
 
 
 def get_channels_string(user, channels):
-    channels_string = user + ":\n```"
+    channels_string = user + ":\n"
     for channel in channels:
-        channels_string = channels_string + "<#${0}>".format(channel) + "\n"
-    channels_string = channels_string + "```"
+        channels_string = channels_string + "<#${0}>\n".format(channel)
     return channels_string
 
 
