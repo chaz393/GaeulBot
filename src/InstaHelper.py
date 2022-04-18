@@ -15,7 +15,9 @@ class InstaHelper:
         self.stories_enabled = False
         username = os.getenv('INSTAGRAM_USERNAME')
         password = os.getenv('INSTAGRAM_PASSWORD')
-        if '{username}' not in username and '{password}' not in password and len(username) > 0 and len(password) > 0:
+        if username is not None and password is not None\
+                and len(username) > 0 and len(password) > 0\
+                and '{username}' not in username and '{password}' not in password:
             try:
                 self.loader.login(username, password)
                 self.stories_enabled = True

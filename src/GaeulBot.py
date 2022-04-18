@@ -447,10 +447,9 @@ def get_users_string(users):
 
 def get_channels_string(user, channels):
     channels_string = user + ":\n"
-    print(user)
     for channel in channels:
-        print(channel)
-        channels_string = channels_string + "<#${" + channel + "}>\n"
+        guild_name = client.get_channel(channel).guild.name
+        channels_string = channels_string + "<#{0}> - {1}\n".format(channel, guild_name)
     return channels_string
 
 
