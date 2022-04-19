@@ -68,12 +68,11 @@ class InstaHelper:
 
     @staticmethod
     def login_info_is_valid(username, password):
-        valid = username is not None and password is not None \
-                and len(username) > 0 and len(password) > 0 \
-                and '{username}' not in username and '{password}' not in password
-        if not valid:
-            if username is None or not len(username) > 0 or '{username}' in username:
-                print("instagram username is invalid. check env file")
-            if password is None or not len(password) > 0 or '{password}' in password:
-                print("instagram password is invalid. check env file")
+        valid = True
+        if username is None or not len(username) > 0 or '{username}' in username:
+            valid = False
+            print("instagram username is invalid. check env file")
+        if password is None or not len(password) > 0 or '{password}' in password:
+            valid = False
+            print("instagram password is invalid. check env file")
         return valid
