@@ -19,6 +19,8 @@ from GaeulBotExceptions import FilesNotFoundException
 
 time.sleep(5)  # give time for db to start up
 
+disable_insta_login = False
+
 postgresDao = PostgresDao()
 instaHelper = InstaHelper()
 intents = discord.Intents.default()
@@ -240,10 +242,10 @@ async def on_message(message):
             return
 
     if msg.startswith('$stories'):
-        if instaHelper.stories_enabled:
-            await DiscordHelper.send_message('stories are currently enabled', channel_id, client)
-        else:
-            await DiscordHelper.send_message('stories are currently disabled', channel_id, client)
+        await DiscordHelper.send_story_status(instaHelper.logged_in,
+                                              postgresDao.stories_are_enabled(),
+                                              channel_id,
+                                              client)
 
     if msg.startswith('$update_username') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
         if not len(msg.split(' ')) == 3:  # if it has 3 args (command, old username, and new username)
@@ -272,13 +274,32 @@ async def on_message(message):
             await DiscordHelper.send_message(get_channels_string(user, channels), channel_id, client)
         return
 
+    if msg.startswith('$set_stories_enabled') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
+        if not len(msg.split(' ')) == 2:  # if it has 2 args (command, enabled flag)
+            await DiscordHelper.send_message('correct usage is \'$set_stories_enabled true\' or'
+                                             ' \'$set_stories_enabled false\'', channel_id, client)
+            return
+        enabled = msg.split(' ')[1]
+        if not (enabled == 'true' or enabled == 'false'):
+            await DiscordHelper.send_message('correct usage is \'$set_stories_enabled true\' or'
+                                             ' \'$set_stories_enabled false\'', channel_id, client)
+            return
+        if enabled == 'true':
+            postgresDao.enable_stories()
+        else:
+            postgresDao.disable_stories()
+        await DiscordHelper.send_story_status(instaHelper.logged_in,
+                                              postgresDao.stories_are_enabled(),
+                                              channel_id,
+                                              client)
+
 
 async def refresh_users(users, refresh_all_users, channel_sent_from):
     if refresh_all_users:
         await DiscordHelper.send_message("refreshing all", channel_sent_from, client)
         start_time = datetime.datetime.now().timestamp()
     await refresh_posts(users, refresh_all_users, channel_sent_from)
-    if instaHelper.stories_enabled:
+    if instaHelper.logged_in and postgresDao.stories_are_enabled():
         await refresh_stories(users, refresh_all_users, channel_sent_from)
     if refresh_all_users:
         end_time = datetime.datetime.now().timestamp()
@@ -453,6 +474,13 @@ def get_channels_string(user, channels):
     return channels_string
 
 
+def try_insta_login():
+    username = os.getenv('INSTAGRAM_USERNAME')
+    password = os.getenv('INSTAGRAM_PASSWORD')
+    if not disable_insta_login and InstaHelper.login_info_is_valid(username, password):
+        instaHelper.try_login(username, password)
+
+
 async def print_auto_refresh_message(start, duration):
     channel_id = os.getenv('REFRESH_ALL_CHANNEL')
     if '{channel_id}' not in channel_id and len(channel_id) > 0:
@@ -505,6 +533,11 @@ async def auto_refresh():
 if __name__ == "__main__":
     try:
         postgresDao.attempt_migrations()
+        try:
+            try_insta_login()
+        except Exception as e:
+            print('stories disabled due to login error')
+            print(e)
         auto_refresh.start()
         client.run(os.getenv('DISCORD_TOKEN'))
     finally:

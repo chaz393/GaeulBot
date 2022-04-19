@@ -86,3 +86,13 @@ class DiscordHelper:
         return user.id == guild.owner.id or \
                DiscordHelper.user_has_mod_role(user) or \
                str(user.id) == os.getenv('BOT_OWNER_ID')
+
+    @staticmethod
+    async def send_story_status(logged_in, stories_are_enabled, channel_id, client):
+        if not logged_in and stories_are_enabled:
+            await DiscordHelper.send_message("stories are enabled but unavailable due to login error. check logs",
+                                             channel_id, client)
+        elif logged_in and stories_are_enabled:
+            await DiscordHelper.send_message("stories enabled", channel_id, client)
+        elif not stories_are_enabled:
+            await DiscordHelper.send_message("stories are disabled", channel_id, client)

@@ -5,7 +5,7 @@ from DBMigrations import DBMigrations
 
 class PostgresDao:
 
-    db_version = 3
+    db_version = 4
     dbMigrations = DBMigrations()
 
     def __init__(self):
@@ -130,4 +130,17 @@ class PostgresDao:
                             .format(new_username, old_username))
         self.cursor.execute("UPDATE user_info SET username = \'{0}\' WHERE username = \'{1}\'"
                             .format(new_username, old_username))
+        self.conn.commit()
+
+    def stories_are_enabled(self):
+        self.cursor.execute("SELECT stories_enabled FROM app_info")
+        rows = self.cursor.fetchall()
+        return rows[0][0]
+
+    def enable_stories(self):
+        self.cursor.execute("UPDATE app_info SET stories_enabled = true;")
+        self.conn.commit()
+
+    def disable_stories(self):
+        self.cursor.execute("UPDATE app_info SET stories_enabled = false;")
         self.conn.commit()
