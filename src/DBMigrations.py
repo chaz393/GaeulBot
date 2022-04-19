@@ -5,6 +5,7 @@ class DBMigrations:
     def __init__(self):
         self.migrations[1] = self.one_to_two
         self.migrations[2] = self.two_to_three
+        self.migrations[3] = self.three_to_four
 
     @staticmethod
     def one_to_two(conn):
@@ -28,4 +29,12 @@ class DBMigrations:
         cursor = conn.cursor()
         cursor.execute("CREATE TABLE whitelist (key serial PRIMARY KEY, server_id BIGINT NOT NULL, user_id BIGINT NOT NULL)")
         cursor.execute("UPDATE app_info SET dbversion = 3")
+        conn.commit()
+
+    @staticmethod
+    def three_to_four(conn):
+        cursor = conn.cursor()
+        cursor.execute("ALTER TABLE app_info ADD COLUMN stories_enabled BOOLEAN;")
+        cursor.execute("UPDATE app_info SET stories_enabled = true")
+        cursor.execute("UPDATE app_info SET dbversion = 4")
         conn.commit()

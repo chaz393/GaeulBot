@@ -11,21 +11,12 @@ class InstaHelper:
                                               save_metadata=False,
                                               download_video_thumbnails=False,
                                               quiet=True)
+        self.logged_in = False
 
-        self.stories_enabled = False
-        username = os.getenv('INSTAGRAM_USERNAME')
-        password = os.getenv('INSTAGRAM_PASSWORD')
-        if username is not None and password is not None\
-                and len(username) > 0 and len(password) > 0\
-                and '{username}' not in username and '{password}' not in password:
-            try:
-                self.loader.login(username, password)
-                self.stories_enabled = True
-            except Exception as e:
-                print('stories disabled')
-                print(e)
-        else:
-            print('stories disabled')
+    def try_login(self, username, password):
+        self.loader.login(username, password)
+        self.logged_in = True
+        print("successfully logged into insta with username {0}".format(username))
 
     def getMediaId(self, item):
         return item.mediaid
@@ -59,7 +50,7 @@ class InstaHelper:
         return 0
 
     def get_latest_story_id_from_ig(self, userid):
-        if self.stories_enabled:
+        if self.logged_in:
             stories = self.loader.get_stories(userids=[userid])
             for story in stories:
                 for storyitem in story.get_items():
@@ -74,3 +65,15 @@ class InstaHelper:
 
     def get_profile_from_username(self, username):
         return instaloader.Profile.from_username(self.loader.context, username)
+
+    @staticmethod
+    def login_info_is_valid(username, password):
+        valid = username is not None and password is not None \
+                and len(username) > 0 and len(password) > 0 \
+                and '{username}' not in username and '{password}' not in password
+        if not valid:
+            if username is None or not len(username) > 0 or '{username}' in username:
+                print("instagram username is invalid. check env file")
+            if password is None or not len(password) > 0 or '{password}' in password:
+                print("instagram password is invalid. check env file")
+        return valid
