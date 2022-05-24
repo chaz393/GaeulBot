@@ -5,4 +5,4 @@ RUN mkdir /src
 
 ADD src/  /src/
 
-CMD ["python3", "/src/GaeulBot.py"]
+CMD ["python3", "-u", "/src/GaeulBot.py"]
