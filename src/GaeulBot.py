@@ -296,7 +296,8 @@ async def on_message(message):
 
 async def refresh_users(users, refresh_all_users, channel_sent_from):
     if refresh_all_users:
-        await DiscordHelper.send_message("refreshing all", channel_sent_from, client)
+        if channel_sent_from is not None:
+            await DiscordHelper.send_message("refreshing all", channel_sent_from, client)
         start_time = datetime.datetime.now().timestamp()
     await refresh_posts(users, refresh_all_users, channel_sent_from)
     if instaHelper.logged_in and postgresDao.stories_are_enabled():
@@ -305,7 +306,8 @@ async def refresh_users(users, refresh_all_users, channel_sent_from):
         end_time = datetime.datetime.now().timestamp()
         # noinspection PyUnboundLocalVariable
         duration = round(end_time - start_time, 1)
-        await DiscordHelper.send_message("done refreshing in {0}s".format(duration), channel_sent_from, client)
+        if channel_sent_from is not None:
+            await DiscordHelper.send_message("done refreshing in {0}s".format(duration), channel_sent_from, client)
 
 
 async def refresh_posts(users, refresh_all_users, channel_sent_from):
