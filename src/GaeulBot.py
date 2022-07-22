@@ -293,6 +293,7 @@ async def on_message(message):
                                               channel_id,
                                               client)
     if msg.startswith('$try insta login') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
+        print("retrying insta login")
         try_insta_login()
 
 
