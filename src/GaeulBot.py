@@ -292,6 +292,8 @@ async def on_message(message):
                                               postgresDao.stories_are_enabled(),
                                               channel_id,
                                               client)
+    if msg.startswith('$try insta login') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
+        try_insta_login()
 
 
 async def refresh_users(users, refresh_all_users, channel_sent_from):
