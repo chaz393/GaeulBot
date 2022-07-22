@@ -457,14 +457,9 @@ def strip_username_to_user_id(username):
 
 
 def get_users_string(users):
-    first_time = True
     users_string = ""
     for user in users:
-        if first_time:
-            first_time = False
-            users_string = user
-        else:
-            users_string = users_string + "\n" + user
+        users_string = users_string + "\n" + user
     return users_string
 
 
