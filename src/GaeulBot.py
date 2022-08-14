@@ -526,6 +526,7 @@ async def auto_refresh():
             await refresh_users(all_users, True, None)
             end_time = datetime.datetime.now().timestamp()
             duration = round(end_time - start_time, 1)
+            print('done auto refreshing all users in {0}'.format(duration))
             await print_auto_refresh_message(False, duration)
         else:
             first_refresh = False
