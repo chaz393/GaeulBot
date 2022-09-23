@@ -26,7 +26,12 @@ class InstaHelper:
         posts = []
         for post in profile.get_posts():
             if post.mediaid <= last_id:
-                break
+                # pinned posts are always at the top of the list, we need to continue past those to possibly newer
+                # posts if the user has pinned posts
+                if post.is_pinned:
+                    continue
+                else:
+                    break
             posts.append(post)
         posts.sort(key=self.getMediaId)
         return posts

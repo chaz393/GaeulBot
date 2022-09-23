@@ -293,6 +293,10 @@ async def on_message(message):
                                               channel_id,
                                               client)
 
+    if msg.startswith('$try_insta_login') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
+        print("retrying insta login")
+        try_insta_login()
+
 
 async def refresh_users(users, refresh_all_users, channel_sent_from):
     if refresh_all_users:
@@ -457,14 +461,9 @@ def strip_username_to_user_id(username):
 
 
 def get_users_string(users):
-    first_time = True
     users_string = ""
     for user in users:
-        if first_time:
-            first_time = False
-            users_string = user
-        else:
-            users_string = users_string + "\n" + user
+        users_string = users_string + "\n" + user
     return users_string
 
 
@@ -527,6 +526,7 @@ async def auto_refresh():
             await refresh_users(all_users, True, None)
             end_time = datetime.datetime.now().timestamp()
             duration = round(end_time - start_time, 1)
+            print('done auto refreshing all users in {0}'.format(duration))
             await print_auto_refresh_message(False, duration)
         else:
             first_refresh = False
