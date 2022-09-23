@@ -5,7 +5,7 @@ from DBMigrations import DBMigrations
 
 class PostgresDao:
 
-    db_version = 4
+    db_version = 5
     dbMigrations = DBMigrations()
 
     def __init__(self):
