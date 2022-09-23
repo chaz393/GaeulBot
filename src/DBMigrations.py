@@ -44,4 +44,5 @@ class DBMigrations:
     def four_to_five(conn):
         cursor = conn.cursor()
         cursor.execute("ALTER TABLE user_info ADD COLUMN user_disabled BOOLEAN DEFAULT FALSE")
+        cursor.execute("UPDATE app_info SET dbversion = 5")
         conn.commit()
