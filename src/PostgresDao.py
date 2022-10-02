@@ -72,6 +72,7 @@ class PostgresDao:
     def get_userid_from_db(self, user):
         self.cursor.execute("SELECT userid FROM user_info WHERE username = '{0}';".format(user))
         rows = self.cursor.fetchall()
+        print(rows)
         return rows[0][0]
 
     def get_last_story_id_from_db(self, user):
