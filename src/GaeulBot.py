@@ -189,6 +189,7 @@ async def on_message(message):
                     profile = instaHelper.get_profile_from_username(username)
                     userid = profile.userid
                     print(f"userid not found in db, userid from ig: {userid}")
+                print(userid)
                 storyitems = instaHelper.get_stories_for_user(userid, 0)
                 print(storyitems)
                 await send_stories(storyitems, username, [channel_id])
