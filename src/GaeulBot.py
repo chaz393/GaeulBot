@@ -178,13 +178,14 @@ async def on_message(message):
                                                  client)
         return
 
-    if msg.startswith('$getstories'):
+    if msg.startswith('$getstories'):  # and instaHelper.logged_in and postgresDao.stories_are_enabled():
         if len(msg.split(' ')) == 2:  # if it has 2 args (command and username)
             username = msg.split(' ')[1]
             print("getting current stories for {0} in {1} {2}".format(username, channel_name, channel_id))
             try:
                 userid = postgresDao.get_userid_from_db(username)
-                print(f"userid: {userid}")
+                print(userid)
+                return
                 if userid is None or userid == "":
                     profile = instaHelper.get_profile_from_username(username)
                     userid = profile.userid
