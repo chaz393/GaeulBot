@@ -178,7 +178,10 @@ async def on_message(message):
                                                  client)
         return
 
-    if msg.startswith('$getstories'):  # and instaHelper.logged_in and postgresDao.stories_are_enabled():
+    if msg.startswith('$getstories'):
+        if not instaHelper.logged_in or not postgresDao.stories_are_enabled():
+            await DiscordHelper.send_message("stories not enabled", channel_id, client)
+            return
         if len(msg.split(' ')) == 2:  # if it has 2 args (command and username)
             username = msg.split(' ')[1]
             print("getting current stories for {0} in {1} {2}".format(username, channel_name, channel_id))
