@@ -38,7 +38,6 @@ class InstaHelper:
 
     def get_stories_for_user(self, userid, last_id):
         stories = []
-        print(self.loader.get_stories(userids=[userid]))
         for story in self.loader.get_stories(userids=[userid]):
             for storyitem in story.get_items():
                 if storyitem.mediaid <= last_id:

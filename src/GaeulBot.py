@@ -183,19 +183,15 @@ async def on_message(message):
             username = msg.split(' ')[1]
             print("getting current stories for {0} in {1} {2}".format(username, channel_name, channel_id))
             try:
+                userid = ""
                 try:
                     userid = postgresDao.get_userid_from_db(username)
-                    print(userid)
-                except Exception as e:
-                    print(e)
-                return
-                if userid is None or userid == "":
+                except Exception:
+                    print(f"{username} not found in db, getting from instagram")
+                if userid == "":
                     profile = instaHelper.get_profile_from_username(username)
                     userid = profile.userid
-                    print(f"userid not found in db, userid from ig: {userid}")
-                print(userid)
                 storyitems = instaHelper.get_stories_for_user(userid, 0)
-                print(storyitems)
                 await send_stories(storyitems, username, [channel_id])
             except Exception as e:
                 print('There was an issue getting stories for {0}'.format(username))
