@@ -178,6 +178,27 @@ async def on_message(message):
                                                  client)
         return
 
+    if msg.startswith('$getstories'):
+        if len(msg.split(' ')) == 2:  # if it has 2 args (command and username)
+            username = msg.split(' ')[1]
+            print("getting current stories for {0} in {1} {2}".format(username, channel_name, channel_id))
+            try:
+                userid = postgresDao.get_userid_from_db(username)
+                print(f"userid: {userid}")
+                if userid is None or userid == "":
+                    profile = instaHelper.get_profile_from_username(username)
+                    userid = profile.userid
+                    print(f"userid not found in db, userid from ig: {userid}")
+                storyitems = instaHelper.get_stories_for_user(userid, 0)
+                await send_stories(storyitems, username, channel_id)
+            except Exception as e:
+                print('There was an issue getting stories for {0}'.format(username))
+                print(e)
+                await DiscordHelper.send_message('There was an issue getting stories for {0}'.format(username),
+                                                 channel_id,
+                                                 client)
+        return
+
     if msg.startswith('$whitelist') and \
             DiscordHelper.user_is_mod(message.author, message.guild) and \
             len(msg.split(' ')) == 2:  # if it has 2 args (command and user @)
