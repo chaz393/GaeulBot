@@ -190,7 +190,7 @@ async def on_message(message):
                     userid = profile.userid
                     print(f"userid not found in db, userid from ig: {userid}")
                 storyitems = instaHelper.get_stories_for_user(userid, 0)
-                await send_stories(storyitems, username, channel_id)
+                await send_stories(storyitems, username, [channel_id])
             except Exception as e:
                 print('There was an issue getting stories for {0}'.format(username))
                 print(e)
