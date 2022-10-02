@@ -178,6 +178,32 @@ async def on_message(message):
                                                  client)
         return
 
+    if msg.startswith('$getstories'):
+        if not instaHelper.logged_in or not postgresDao.stories_are_enabled():
+            await DiscordHelper.send_message("stories not enabled", channel_id, client)
+            return
+        if len(msg.split(' ')) == 2:  # if it has 2 args (command and username)
+            username = msg.split(' ')[1]
+            print("getting current stories for {0} in {1} {2}".format(username, channel_name, channel_id))
+            try:
+                userid = ""
+                try:
+                    userid = postgresDao.get_userid_from_db(username)
+                except Exception:
+                    print(f"{username} not found in db, getting from instagram")
+                if userid == "":
+                    profile = instaHelper.get_profile_from_username(username)
+                    userid = profile.userid
+                storyitems = instaHelper.get_stories_for_user(userid, 0)
+                await send_stories(storyitems, username, [channel_id])
+            except Exception as e:
+                print('There was an issue getting stories for {0}'.format(username))
+                print(e)
+                await DiscordHelper.send_message('There was an issue getting stories for {0}'.format(username),
+                                                 channel_id,
+                                                 client)
+        return
+
     if msg.startswith('$whitelist') and \
             DiscordHelper.user_is_mod(message.author, message.guild) and \
             len(msg.split(' ')) == 2:  # if it has 2 args (command and user @)
@@ -292,6 +318,10 @@ async def on_message(message):
                                               postgresDao.stories_are_enabled(),
                                               channel_id,
                                               client)
+
+    if msg.startswith('$try_insta_login') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
+        print("retrying insta login")
+        try_insta_login()
 
 
 async def refresh_users(users, refresh_all_users, channel_sent_from):
@@ -457,14 +487,9 @@ def strip_username_to_user_id(username):
 
 
 def get_users_string(users):
-    first_time = True
     users_string = ""
     for user in users:
-        if first_time:
-            first_time = False
-            users_string = user
-        else:
-            users_string = users_string + "\n" + user
+        users_string = users_string + "\n" + user
     return users_string
 
 
@@ -527,6 +552,7 @@ async def auto_refresh():
             await refresh_users(all_users, True, None)
             end_time = datetime.datetime.now().timestamp()
             duration = round(end_time - start_time, 1)
+            print('done auto refreshing all users in {0}'.format(duration))
             await print_auto_refresh_message(False, duration)
         else:
             first_refresh = False

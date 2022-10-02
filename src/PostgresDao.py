@@ -5,7 +5,7 @@ from DBMigrations import DBMigrations
 
 class PostgresDao:
 
-    db_version = 4
+    db_version = 5
     dbMigrations = DBMigrations()
 
     def __init__(self):
@@ -52,7 +52,7 @@ class PostgresDao:
         self.conn.commit()
 
     def get_registered_users_in_channel(self, channel_id):
-        self.cursor.execute("SELECT username FROM registrations WHERE channel = '{0}';".format(channel_id))
+        self.cursor.execute("SELECT username FROM registrations WHERE channel = '{0}' AND user_disabled = false;".format(channel_id))
         rows = self.cursor.fetchall()
         users = []
         for row in rows:
@@ -85,7 +85,7 @@ class PostgresDao:
         return rows[0][0]
 
     def get_all_users(self):
-        self.cursor.execute("SELECT DISTINCT username FROM  user_info;")
+        self.cursor.execute("SELECT DISTINCT username FROM user_info WHERE user_disabled = false;")
         rows = self.cursor.fetchall()
         users = []
         for row in rows:
