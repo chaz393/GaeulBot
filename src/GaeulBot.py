@@ -183,8 +183,11 @@ async def on_message(message):
             username = msg.split(' ')[1]
             print("getting current stories for {0} in {1} {2}".format(username, channel_name, channel_id))
             try:
-                userid = postgresDao.get_userid_from_db(username)
-                print(userid)
+                try:
+                    userid = postgresDao.get_userid_from_db(username)
+                    print(userid)
+                except Exception as e:
+                    print(e)
                 return
                 if userid is None or userid == "":
                     profile = instaHelper.get_profile_from_username(username)
