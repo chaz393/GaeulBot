@@ -70,7 +70,7 @@ class DiscordHelper:
     @staticmethod
     def user_has_mod_role(user):
         for role in user.roles:
-            if role.name.lower().contains("mod"):
+            if 'mod' in role.name.lower():
                 return True
         return False
 
