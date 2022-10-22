@@ -80,8 +80,6 @@ async def on_message(message):
         print("refreshing users in {0} {1}".format(channel_name, str(channel_id)))
         users = postgresDao.get_registered_users_in_channel(channel_id)
         users = get_enabled_users(users)
-        print(users)
-        return
         if len(users) == 0:
             await DiscordHelper.send_message('There are no registered users in {0}'.format(channel_name),
                                              channel_id,
