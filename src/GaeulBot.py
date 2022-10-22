@@ -79,6 +79,7 @@ async def on_message(message):
     if msg.startswith('$refresh'):
         print("refreshing users in {0} {1}".format(channel_name, str(channel_id)))
         users = postgresDao.get_registered_users_in_channel(channel_id)
+        users = get_enabled_users(users)
         if len(users) == 0:
             await DiscordHelper.send_message('There are no registered users in {0}'.format(channel_name),
                                              channel_id,
@@ -489,7 +490,7 @@ def strip_username_to_user_id(username):
 def get_users_string(users):
     users_string = ""
     for user in users:
-        users_string = users_string + "\n" + user
+        users_string = users_string + "\n" + user + ", disabled: {0}".format(postgresDao.is_user_disabled(user))
     return users_string
 
 
@@ -537,6 +538,14 @@ def get_refresh_interval():
         except:
             print('refresh interval is invalid, defaulting to 60 minutes')
             return 60
+
+
+def get_enabled_users(users):
+    enabled_users = []
+    for user in users:
+        if not postgresDao.is_user_disabled(user):
+            enabled_users.append(user)
+    return enabled_users
 
 
 @tasks.loop(minutes=get_refresh_interval())
