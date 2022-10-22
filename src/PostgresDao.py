@@ -146,6 +146,6 @@ class PostgresDao:
         self.conn.commit()
 
     def is_user_disabled(self, username):
-        self.cursor.execute("SELECT user_disabled FROM user_info where username = \'{0}\'".format(username))
+        self.cursor.execute("SELECT user_disabled FROM user_info WHERE username = \'{0}\'".format(username))
         rows = self.cursor.fetchall()
         return rows[0][0]
