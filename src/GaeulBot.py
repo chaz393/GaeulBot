@@ -196,7 +196,7 @@ async def on_message(message):
                     profile = instaHelper.get_profile_from_username(username)
                     userid = profile.userid
                 storyitems = instaHelper.get_stories_for_user(userid, 0)
-                await send_stories(storyitems, username, [channel_id])
+                await send_stories(storyitems, username, [channel_id], True)
             except Exception as e:
                 print('There was an issue getting stories for {0}'.format(username))
                 print(e)
@@ -359,7 +359,7 @@ async def refresh_stories(users, refresh_all_users, channel_sent_from):
         storyitems = instaHelper.get_stories_for_user(userid, last_story_id)
         if len(storyitems) == 0 and not refresh_all_users:
             await DiscordHelper.send_message('no new stories for {0}'.format(user), channel_sent_from, client)
-        await send_stories(storyitems, user, channels)
+        await send_stories(storyitems, user, channels, False)
 
 
 def register_user(username, new_channel_id):
@@ -419,14 +419,15 @@ async def send_posts(posts, user, channels):
         postgresDao.set_latest_post_id(user, post.mediaid)
 
 
-async def send_stories(storyitems, user, channels):
+async def send_stories(storyitems, user, channels, dont_update_last_story_id):
     for storyitem in storyitems:
         instaHelper.download_storyitem(storyitem)
         files = get_files(storyitem, ItemType.STORY)
         for channel in channels:
             print('{0} {1} in {2}'.format(storyitem.mediaid, storyitem.shortcode, channel))
             await DiscordHelper.send_story(storyitem, channel, files, client)
-        postgresDao.set_latest_story_id(user, storyitem.mediaid)
+        if not dont_update_last_story_id:
+            postgresDao.set_latest_story_id(user, storyitem.mediaid)
 
 
 def get_post_files(post):
