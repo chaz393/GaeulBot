@@ -148,7 +148,8 @@ class PostgresDao:
     def is_user_disabled(self, username):
         self.cursor.execute("SELECT user_disabled FROM user_info where username = \'{0}\'".format(username))
         rows = self.cursor.fetchall()
-        print(username + " " + rows)
+        print(username)
+        print(rows)
         if rows[0][0] == 'true':
             return True
         else:
