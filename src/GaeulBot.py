@@ -4,6 +4,7 @@ import contextlib
 import datetime
 import time
 import traceback
+import random
 from discord.ext import tasks
 from ItemType import ItemType
 from PostgresDao import PostgresDao
@@ -417,6 +418,7 @@ async def send_posts(posts, user, channels):
             print('{0} {1} in {2}'.format(post.mediaid, post.shortcode, channel))
             await DiscordHelper.send_post(post, channel, files, client)
         postgresDao.set_latest_post_id(user, post.mediaid)
+        time.sleep(random.randint(1, 5))
 
 
 async def send_stories(storyitems, user, channels, dont_update_last_story_id):
@@ -428,6 +430,7 @@ async def send_stories(storyitems, user, channels, dont_update_last_story_id):
             await DiscordHelper.send_story(storyitem, channel, files, client)
         if not dont_update_last_story_id:
             postgresDao.set_latest_story_id(user, storyitem.mediaid)
+        time.sleep(random.randint(1, 5))
 
 
 def get_post_files(post):
