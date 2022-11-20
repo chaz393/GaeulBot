@@ -39,9 +39,9 @@ help_text = 'Use $register {username} to register a user. ($register p_fall99) \
             'GaeulBot server for help https://discord.gg/63fdDSzdrr'
 tree = app_commands.CommandTree(client)
 guild = None
-if bool(os.getenv('DEV_MODE')):
-    print("DEV_MODE, setting guild to 512897695006982158")
-    guild = discord.Object(id=512897695006982158)
+if os.getenv('DEV_MODE').lower() == "true" and os.getenv('DEV_GUILD'):
+    print(f"Dev mode, setting guild to {os.getenv('DEV_GUILD')}")
+    guild = discord.Object(id=int(os.getenv('DEV_GUILD')))
 
 
 @tree.command(name="ping", description="pong", guild=guild)
