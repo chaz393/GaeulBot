@@ -364,6 +364,7 @@ async def send_posts(posts, user, channels):
             print('{0} {1} in {2}'.format(post.mediaid, post.shortcode, channel))
             await DiscordHelper.send_post(post, channel, files, client)
         postgresDao.set_latest_post_id(user, post.mediaid)
+        # sleep to hopefully make IG flag the account less often
         time.sleep(random.randint(1, 5))
 
 
@@ -376,6 +377,7 @@ async def send_stories(storyitems, user, channels, dont_update_last_story_id):
             await DiscordHelper.send_story(storyitem, channel, files, client)
         if not dont_update_last_story_id:
             postgresDao.set_latest_story_id(user, storyitem.mediaid)
+        # sleep to hopefully make IG flag the account less often
         time.sleep(random.randint(1, 5))
 
 
