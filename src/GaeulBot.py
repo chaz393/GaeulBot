@@ -39,7 +39,7 @@ help_text = 'Use /register {username} to register a user. (/register p_fall99) \
             'If you have any questions join the GaeulBot server for help https://discord.gg/63fdDSzdrr'
 tree = app_commands.CommandTree(client)
 guild = None
-if os.getenv('DEV_MODE').lower() == "true" and os.getenv('DEV_GUILD'):
+if os.getenv('DEV_MODE') is not None and os.getenv('DEV_MODE').lower() == "true" and os.getenv('DEV_GUILD'):
     print(f"Dev mode, setting guild to {os.getenv('DEV_GUILD')}")
     guild = discord.Object(id=int(os.getenv('DEV_GUILD')))
 
