@@ -292,12 +292,10 @@ async def refresh_posts(users, refresh_all_users, channel_sent_from):
     for user in users:
         last_post_id = postgresDao.get_last_post_id_from_db(user)
         channels = postgresDao.get_channels_for_user(user)
-        time.sleep(2)
-        # TODO uncomment
-        # posts = instaHelper.get_posts(user, last_post_id)
-        # if len(posts) == 0 and not refresh_all_users:
-        #     await DiscordHelper.send_message('no new posts for {0}'.format(user), channel_sent_from, client)
-        # await send_posts(posts, user, channels)
+        posts = instaHelper.get_posts(user, last_post_id)
+        if len(posts) == 0 and not refresh_all_users:
+            await DiscordHelper.send_message('no new posts for {0}'.format(user), channel_sent_from, client)
+        await send_posts(posts, user, channels)
 
 
 async def refresh_stories(users, refresh_all_users, channel_sent_from):
@@ -305,12 +303,10 @@ async def refresh_stories(users, refresh_all_users, channel_sent_from):
         last_story_id = postgresDao.get_last_story_id_from_db(user)
         channels = postgresDao.get_channels_for_user(user)
         userid = postgresDao.get_userid_from_db(user)
-        time.sleep(2)
-        # TODO uncomment
-        # storyitems = instaHelper.get_stories_for_user(userid, last_story_id)
-        # if len(storyitems) == 0 and not refresh_all_users:
-        #     await DiscordHelper.send_message('no new stories for {0}'.format(user), channel_sent_from, client)
-        # await send_stories(storyitems, user, channels, False)
+        storyitems = instaHelper.get_stories_for_user(userid, last_story_id)
+        if len(storyitems) == 0 and not refresh_all_users:
+            await DiscordHelper.send_message('no new stories for {0}'.format(user), channel_sent_from, client)
+        await send_stories(storyitems, user, channels, False)
 
 
 def register_user(username, new_channel_id):
