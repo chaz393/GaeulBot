@@ -371,7 +371,7 @@ async def send_posts(posts, user, channels):
             # this is the most consistent way to handle this issue
             # this all came about because trying to download CNiXcG5nwpc was throwing
             # instaloader.exceptions.ConnectionException: download_pic(): HTTP error code 429
-            # this post is an IGTV post and maybe that has something to do with it but I don't see a way to
+            # this post is an IGTV post and maybe that has something to do with it, but I don't see a way to
             # identify them before they fail to download.
             continue
         for channel in channels:
