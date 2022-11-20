@@ -56,6 +56,8 @@ class InstaHelper:
 
     def get_latest_post_id_from_ig(self, profile):
         for post in profile.get_posts():
+            if post.is_pinned:
+                continue
             return post.mediaid
         return 0
 
