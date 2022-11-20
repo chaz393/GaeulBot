@@ -5,6 +5,7 @@ import datetime
 import time
 import traceback
 import random
+import asyncio
 from discord import app_commands
 from discord import Interaction
 from discord.ext import tasks
@@ -501,42 +502,38 @@ def get_enabled_users(users):
     return enabled_users
 
 
-# @tasks.loop(minutes=get_refresh_interval())
-# async def auto_refresh():
-#     with contextlib.suppress(Exception):
-#         global first_refresh
-#         # it always tries to run this when first starting and fails because the bot hasn't started yet
-#         if not first_refresh:
-#             all_users = postgresDao.get_all_users()
-#             print('auto refreshing all users')
-#             await print_auto_refresh_message(True, None)
-#             start_time = datetime.datetime.now().timestamp()
-#             await refresh_users(all_users, True, None)
-#             end_time = datetime.datetime.now().timestamp()
-#             duration = round(end_time - start_time, 1)
-#             print('done auto refreshing all users in {0}'.format(duration))
-#             await print_auto_refresh_message(False, duration)
-#         else:
-#             first_refresh = False
+@tasks.loop(minutes=get_refresh_interval())
+async def auto_refresh():
+    with contextlib.suppress(Exception):
+        # it always tries to run this when first starting and fails because the bot hasn't started yet
+        global first_refresh
+        if first_refresh:
+            first_refresh = False
+            return
+        all_users = postgresDao.get_all_users()
+        print('auto refreshing all users')
+        await print_auto_refresh_message(True, None)
+        start_time = datetime.datetime.now().timestamp()
+        await refresh_users(all_users, True, None)
+        end_time = datetime.datetime.now().timestamp()
+        duration = round(end_time - start_time, 1)
+        print('done auto refreshing all users in {0}'.format(duration))
+        await print_auto_refresh_message(False, duration)
 
 
-# if __name__ == "__main__":
-#     try:
-#         postgresDao.attempt_migrations()
-#         try:
-#             try_insta_login()
-#         except Exception as e:
-#             print('stories disabled due to login error')
-#             print(e)
-#         # auto_refresh.start()
-#         client.run(os.getenv('DISCORD_TOKEN'))
-#     finally:
-#         auto_refresh.stop()
+async def start_bot():
+    async with client:
+        try:
+            postgresDao.attempt_migrations()
+            try:
+                try_insta_login()
+            except Exception as e:
+                print('stories disabled due to login error')
+                print(e)
+            auto_refresh.start()
+            await client.start(os.getenv('DISCORD_TOKEN'))
+        finally:
+            auto_refresh.stop()
+
 if __name__ == "__main__":
-    postgresDao.attempt_migrations()
-    try:
-        try_insta_login()
-    except Exception as e:
-        print('stories disabled due to login error')
-        print(e)
-    client.run(os.getenv('DISCORD_TOKEN'))
+    asyncio.run(start_bot())
