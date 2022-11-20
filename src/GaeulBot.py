@@ -59,11 +59,12 @@ async def command_refresh(interaction: Interaction):
     print(f"refreshing users in {interaction.channel.name} {interaction.channel.id}")
     await interaction.response.defer()
     users = postgresDao.get_registered_users_in_channel(interaction.channel.id)
-    if len(users) == 0:
+    enabled_users = get_enabled_users(users)
+    if len(enabled_users) == 0:
         await interaction.edit_original_response(content=f"There are no registered users in {interaction.channel.name}")
         return
     else:
-        duration = await refresh_users(users, False, interaction.channel.id)
+        duration = await refresh_users(enabled_users, False, interaction.channel.id)
         await interaction.edit_original_response(content=f"Refresh completed in {duration}s")
         return
 
@@ -75,7 +76,7 @@ async def command_refresh_all(interaction: Interaction):
         return
     await interaction.response.defer()
     print(f"refreshing all, called in {interaction.channel.name} {interaction.channel.id}")
-    all_users = postgresDao.get_all_users()
+    all_users = postgresDao.get_all_enabled_users()
     if len(all_users) == 0:
         await interaction.edit_original_response(content="There are no registered users")
         return
@@ -508,7 +509,7 @@ async def auto_refresh():
         if first_refresh:
             first_refresh = False
             return
-        all_users = postgresDao.get_all_users()
+        all_users = postgresDao.get_all_enabled_users()
         print('auto refreshing all users')
         await print_auto_refresh_message(True, None)
         start_time = datetime.datetime.now().timestamp()

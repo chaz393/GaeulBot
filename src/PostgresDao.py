@@ -84,8 +84,16 @@ class PostgresDao:
         rows = self.cursor.fetchall()
         return rows[0][0]
 
-    def get_all_users(self):
+    def get_all_enabled_users(self):
         self.cursor.execute("SELECT DISTINCT username FROM user_info WHERE user_disabled = false;")
+        rows = self.cursor.fetchall()
+        users = []
+        for row in rows:
+            users.append(row[0])
+        return users
+
+    def get_all_users(self):
+        self.cursor.execute("SELECT DISTINCT username FROM user_info;")
         rows = self.cursor.fetchall()
         users = []
         for row in rows:
