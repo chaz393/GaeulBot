@@ -1,4 +1,4 @@
-FROM python:3.7.7
+FROM python:3.8.0
 
 RUN pip3 install instaloader discord psycopg2 pytz
 RUN mkdir /src
