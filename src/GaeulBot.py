@@ -31,12 +31,11 @@ intents.members = True
 intents.guilds = True
 first_refresh = True
 client = discord.Client(intents=intents)
-help_text = 'Use $register {username} to register a user. ($register p_fall99) \n' \
-            'Use $refresh to refresh the current users. \n' \
-            'Use $users to see current users. \n' \
-            'Use $unregister {username} to unregister a user. ($unregister p_fall99) \n' \
-            'If you have any questions DM fanchazstic#6151 or join the ' \
-            'GaeulBot server for help https://discord.gg/63fdDSzdrr'
+help_text = 'Use /register {username} to register a user. (/register p_fall99) \n' \
+            'Use /refresh to refresh the current users. \n' \
+            'Use /users to see current users. \n' \
+            'Use /unregister {username} to unregister a user. (/unregister p_fall99) \n' \
+            'If you have any questions join the GaeulBot server for help https://discord.gg/63fdDSzdrr'
 tree = app_commands.CommandTree(client)
 guild = None
 if os.getenv('DEV_MODE').lower() == "true" and os.getenv('DEV_GUILD'):
