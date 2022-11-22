@@ -87,12 +87,14 @@ class DiscordHelper:
                DiscordHelper.user_has_mod_role(user) or \
                str(user.id) == os.getenv('BOT_OWNER_ID')
 
+    # this responds to the interaction
+    # be careful using if there's a chance the interaction could have already been responded to
     @staticmethod
-    async def send_story_status(logged_in, stories_are_enabled, channel_id, client):
+    async def send_story_status(logged_in, stories_are_enabled, interaction):
         if not logged_in and stories_are_enabled:
-            await DiscordHelper.send_message("stories are enabled but unavailable due to login error. check logs",
-                                             channel_id, client)
+            await interaction.response.send_message("Stories are enabled but unavailable due to login error. "
+                                                    "Check logs")
         elif logged_in and stories_are_enabled:
-            await DiscordHelper.send_message("stories enabled", channel_id, client)
+            await interaction.response.send_message("Stories are enabled")
         elif not stories_are_enabled:
-            await DiscordHelper.send_message("stories are disabled", channel_id, client)
+            await interaction.response.send_message("Stories are disabled")

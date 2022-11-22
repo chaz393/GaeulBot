@@ -1,5 +1,6 @@
 import instaloader
-import os
+import random
+import time
 from ItemType import ItemType
 
 
@@ -33,6 +34,8 @@ class InstaHelper:
                 else:
                     break
             posts.append(post)
+            # sleep to hopefully make IG flag the account less often
+            time.sleep(random.randint(1, 5))
         posts.sort(key=self.getMediaId)
         return posts
 
@@ -43,6 +46,8 @@ class InstaHelper:
                 if storyitem.mediaid <= last_id:
                     break
                 stories.append(storyitem)
+                # sleep to hopefully make IG flag the account less often
+                time.sleep(random.randint(1, 5))
         stories.sort(key=self.getMediaId)
         return stories
 
@@ -51,6 +56,8 @@ class InstaHelper:
 
     def get_latest_post_id_from_ig(self, profile):
         for post in profile.get_posts():
+            if post.is_pinned:
+                continue
             return post.mediaid
         return 0
 

@@ -5,6 +5,9 @@ import datetime
 import time
 import traceback
 import random
+import asyncio
+from discord import app_commands
+from discord import Interaction
 from discord.ext import tasks
 from ItemType import ItemType
 from PostgresDao import PostgresDao
@@ -27,319 +30,263 @@ instaHelper = InstaHelper()
 intents = discord.Intents.default()
 intents.members = True
 intents.guilds = True
-client = discord.Client(intents=intents)
 first_refresh = True
-help_text = 'Use $register {username} to register a user. ($register p_fall99) \n' \
-            'Use $refresh to refresh the current users. \n' \
-            'Use $users to see current users. \n' \
-            'Use $unregister {username} to unregister a user. ($unregister p_fall99) \n' \
-            'If you have any questions DM fanchazstic#6151 or join the ' \
-            'GaeulBot server for help https://discord.gg/63fdDSzdrr'
+client = discord.Client(intents=intents)
+help_text = 'Use /register {username} to register a user. (/register p_fall99) \n' \
+            'Use /refresh to refresh the current users. \n' \
+            'Use /users to see current users. \n' \
+            'Use /unregister {username} to unregister a user. (/unregister p_fall99) \n' \
+            'If you have any questions join the GaeulBot server for help https://discord.gg/63fdDSzdrr'
+tree = app_commands.CommandTree(client)
+guild = None
+if os.getenv('DEV_MODE') is not None and os.getenv('DEV_MODE').lower() == "true" and os.getenv('DEV_GUILD'):
+    print(f"Dev mode, setting guild to {os.getenv('DEV_GUILD')}")
+    guild = discord.Object(id=int(os.getenv('DEV_GUILD')))
+
+
+@tree.command(name="ping", description="pong", guild=guild)
+async def command_ping(interaction: Interaction):
+    await interaction.response.send_message("pong")
+
+
+@tree.command(name="help", description="Posts a help message with some command usage", guild=guild)
+async def command_help(interaction: Interaction):
+    await interaction.response.send_message(help_text)
+
+
+@tree.command(name="refresh", description="Refreshes users in this channel", guild=guild)
+async def command_refresh(interaction: Interaction):
+    print(f"refreshing users in {interaction.channel.name} {interaction.channel.id}")
+    await interaction.response.defer()
+    users = postgresDao.get_registered_users_in_channel(interaction.channel.id)
+    enabled_users = get_enabled_users(users)
+    if len(enabled_users) == 0:
+        await interaction.edit_original_response(content=f"There are no registered users in {interaction.channel.name}")
+        return
+    else:
+        duration = await refresh_users(enabled_users, False, interaction.channel.id)
+        await interaction.edit_original_response(content=f"Refresh completed in {duration}s")
+        return
+
+
+@tree.command(name="refresh-all", description="Refreshes all users in all channels", guild=guild)
+async def command_refresh_all(interaction: Interaction):
+    if not str(interaction.user.id) == os.getenv('BOT_OWNER_ID'):
+        await interaction.response.send_message("You do not have permission to use this command")
+        return
+    await interaction.response.defer()
+    print(f"refreshing all, called in {interaction.channel.name} {interaction.channel.id}")
+    all_users = postgresDao.get_all_enabled_users()
+    if len(all_users) == 0:
+        await interaction.edit_original_response(content="There are no registered users")
+        return
+    else:
+        duration = await refresh_users(all_users, True, interaction.channel.id)
+        await interaction.edit_original_response(content=f"Done auto refreshing in {duration}s")
+        return
+
+
+@tree.command(name="users", description="Prints a list of users registered in this channel", guild=guild)
+async def command_users(interaction: Interaction):
+    users = postgresDao.get_registered_users_in_channel(interaction.channel.id)
+    users_string = get_users_string(users)
+    if len(users) == 0:
+        await interaction.response.send_message(f"There are no registered users in {interaction.channel.name}")
+    else:
+        await interaction.response.send_message(f"Currently registered users in {interaction.channel.name}:"
+                                                f" ```{users_string}```")
+
+
+@tree.command(name="users-all", description="Prints a list of all users registered in any channel", guild=guild)
+async def command_users_all(interaction: Interaction):
+    if not str(interaction.user.id) == os.getenv('BOT_OWNER_ID'):
+        await interaction.response.send_message("You do not have permission to use this command")
+        return
+    users = postgresDao.get_all_users()
+    users_string = get_users_string(users)
+    if len(users) == 0:
+        await interaction.response.send_message("There are no registered users")
+    else:
+        await interaction.response.send_message(f"Currently registered users: ```{users_string}```")
+
+
+@tree.command(name="registrations",
+              description="Prints a list of all users and which channels they're registered in",
+              guild=guild)
+async def command_registrations(interaction: Interaction):
+    await interaction.response.defer()
+    users = postgresDao.get_all_users()
+    for user in users:
+        channels = postgresDao.get_channels_for_user(user)
+        await DiscordHelper.send_message(get_channels_string(user, channels), interaction.channel.id, client)
+    await interaction.edit_original_response(content="Done printing registrations")
+
+
+@tree.command(name="stories", description="Prints whether or not stories are enabled", guild=guild)
+async def command_stories(interaction: Interaction):
+    await DiscordHelper.send_story_status(instaHelper.logged_in, postgresDao.stories_are_enabled(), interaction)
+
+
+@tree.command(name="set-stories-enabled", description="Enabled or disables stories globally", guild=guild)
+async def command_set_stories_enabled(interaction: Interaction, enable: bool):
+    if not str(interaction.user.id) == os.getenv('BOT_OWNER_ID'):
+        await interaction.response.send_message("You do not have permission to use this command")
+        return
+    if enable:
+        postgresDao.enable_stories()
+    else:
+        postgresDao.disable_stories()
+    await DiscordHelper.send_story_status(instaHelper.logged_in, postgresDao.stories_are_enabled(), interaction)
+
+
+@tree.command(name="retry-instagram-login", description="Retries instagram login", guild=guild)
+async def command_retry_instagram_login(interaction: Interaction):
+    if not str(interaction.user.id) == os.getenv('BOT_OWNER_ID'):
+        await interaction.response.send_message("You do not have permission to use this command")
+        return
+    if postgresDao.stories_are_enabled():
+        print("retrying insta login")
+        await interaction.response.send_message("Attempting login...")
+        try_insta_login()
+    else:
+        await interaction.response.send_message("Stories are not enabled")
+
+
+@tree.command(name="register", description="Register an instagram user to this channel", guild=guild)
+async def command_register(interaction: Interaction, username: str):
+    if not DiscordHelper.user_is_allowed_to_register(interaction.user, False, interaction.guild):
+        await interaction.response.send_message("You do not have permission to use this command")
+        return
+    print(f"registering {username} in {interaction.channel.name} {interaction.channel.id}")
+    await interaction.response.defer()
+    try:
+        register_user(username, interaction.channel.id)
+        await interaction.edit_original_response(content=f"{username} has been registered")
+        return
+    except UserAlreadyRegisteredException:
+        print(f"{username} is already registered in {interaction.channel.id}")
+        await interaction.edit_original_response(content=
+                                                 f"{username} is already registered in {interaction.channel.name}")
+        return
+    except UserNotFoundException:
+        print(f"{username} was not found on instagram, check the spelling")
+        await interaction.edit_original_response(content=f"{username} was not found on instagram, check the spelling")
+        return
+    except Exception as e:
+        print(e)
+        await interaction.edit_original_response(content="An error has occurred")
+        return
+
+
+@tree.command(name="unregister", description="Unregisters an instagram user from this channel", guild=guild)
+async def command_unregister(interaction: Interaction, username: str):
+    if not DiscordHelper.user_is_allowed_to_register(interaction.user, False, interaction.guild):
+        await interaction.response.send_message("You do not have permission to use this command")
+        return
+    print(f"unregistering {username} in {interaction.channel.name} {interaction.channel.id}")
+    await interaction.response.defer()
+    try:
+        unregister_user(username, interaction.channel.id)
+        print(f"{username} was unregistered from {interaction.channel.name}")
+        await interaction.edit_original_response(content=
+                                                 f"{username} has been unregistered from {interaction.channel.name}")
+        return
+    except UserNotRegisteredException:
+        print(f"{username} is not registered in {interaction.channel.name}")
+        await interaction.edit_original_response(content=f"{username} is not registered in {interaction.channel.name}")
+        return
+    except Exception as e:
+        print(e)
+        await interaction.edit_original_response(content="An error has occurred")
+        return
+
+
+@tree.command(name="get-post",
+              description="Gets and posts an instagram post to this channel provided an post shortcode",
+              guild=guild)
+async def command_get_post(interaction: Interaction, shortcode: str):
+    print(f"getting post {shortcode} in {interaction.channel.name} {interaction.channel.id}")
+    await interaction.response.defer()
+    try:
+        post = instaHelper.get_post_from_shortcode(shortcode)
+        files = get_post_files(post)
+        await DiscordHelper.send_post(post, interaction.channel.id, files, client)
+        await interaction.edit_original_response(content=f"Post {shortcode} has been posted")
+    except Exception as e:
+        print(f"There was an issue getting post {shortcode} in {interaction.channel.name}")
+        print(e)
+        await interaction.edit_original_response(content=f"There was an issue getting post {shortcode}")
+
+
+@tree.command(name="get-stories",
+              description="Gets and posts current instagram stories to this channel provided a username",
+              guild=guild)
+async def command_get_stories(interaction: Interaction, username: str):
+    if not instaHelper.logged_in or not postgresDao.stories_are_enabled():
+        await interaction.response.send_message("Stories are not enabled or are unavailable")
+        return
+    print(f"getting current stories for {username} in {interaction.channel.name} {interaction.channel.id}")
+    await interaction.response.defer()
+    try:
+        userid = ""
+        try:
+            userid = postgresDao.get_userid_from_db(username)
+        except:
+            print(f"{username} not found in db, getting from instagram")
+        if userid == "":
+            profile = instaHelper.get_profile_from_username(username)
+            userid = profile.userid
+        storyitems = instaHelper.get_stories_for_user(userid, 0)
+        await send_stories(storyitems, username, [interaction.channel.id], True)
+        await interaction.edit_original_response(content=f"Stories for {username} have been sent")
+    except Exception as exception:
+        print(f"There was an issue getting stories for {username}")
+        print(exception)
+        await interaction.edit_original_response(content=f"There was an issue getting stories for {username}")
+
+
+@tree.command(name="update-username",
+              description="Updates a instagram users username, useful if a user changes their username",
+              guild=guild)
+async def command_update_username(interaction: Interaction, old_username: str, new_username: str):
+    if not str(interaction.user.id) == os.getenv('BOT_OWNER_ID'):
+        await interaction.response.send_message("You do not have permission to use this command")
+        return
+    if not len(postgresDao.get_channels_for_user(old_username)) > 0:
+        await interaction.response.send_message(f"{old_username} is not registered in {interaction.channel.name}")
+        return
+    print(f"Updating user {old_username} to {new_username}")
+    postgresDao.update_username(old_username, new_username)
+    await interaction.response.send_message(f"Successfully updated {old_username} to {new_username}")
 
 
 @client.event
 async def on_ready():
     print('logged in as {0.user}'.format(client))
-    await client.change_presence(activity=discord.Game(name="$help"))
+    await tree.sync(guild=guild)
+    await post_bot_online_message()
+
+
+async def post_bot_online_message():
     channel_id_string = os.getenv('REFRESH_ALL_CHANNEL')
     if '{channel_id}' not in channel_id_string and len(channel_id_string) > 0:
         try:
             channel_id = int(os.getenv('REFRESH_ALL_CHANNEL'))
             await DiscordHelper.send_message('Online', channel_id, client)
-        except:
+        except Exception as exception:
+            print(exception)
             pass
 
 
-@client.event
-async def on_message(message):
-    msg = message.content
-    channel_name = message.channel.name
-    channel_id = message.channel.id
-
-    if message.author == client.user:
-        return
-
-    if msg.startswith('$ping'):
-        await DiscordHelper.send_message('pong', channel_id, client)
-        return
-
-    if msg.startswith('$help'):
-        await DiscordHelper.send_message(help_text, channel_id, client)
-        return
-
-    if msg.startswith('$refresh all') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
-        print("refreshing all, called in {0} {1}".format(channel_name, str(channel_id)))
-        all_users = postgresDao.get_all_users()
-        if len(all_users) == 0:
-            await DiscordHelper.send_message('There are no registered users', channel_id, client)
-            return
-        else:
-            await refresh_users(all_users, True, channel_id)
-            return
-
-    if msg.startswith('$refresh'):
-        print("refreshing users in {0} {1}".format(channel_name, str(channel_id)))
-        users = postgresDao.get_registered_users_in_channel(channel_id)
-        users = get_enabled_users(users)
-        if len(users) == 0:
-            await DiscordHelper.send_message('There are no registered users in {0}'.format(channel_name),
-                                             channel_id,
-                                             client)
-            return
-        else:
-            await refresh_users(users, False, channel_id)
-            return
-
-    if msg.startswith('$register') and \
-            DiscordHelper.user_is_allowed_to_register(message.author,
-                                                      postgresDao.user_is_whitelisted(message.guild.id,
-                                                                                      message.author.id),
-                                                      message.guild):
-        if len(msg.split(' ')) == 2:  # if it has 2 args (command and username)
-            username = msg.split(' ')[1]
-            print("registering {0} in {1} {2}".format(username, channel_name, str(channel_id)))
-            try:
-                register_user(username, channel_id)
-                print("{0} has been registered".format(username))
-                await DiscordHelper.send_message('{0} has been registered'.format(username), channel_id, client)
-                return
-            except UserAlreadyRegisteredException:
-                print("{0} is already registered in {1}".format(username, channel_name))
-                await DiscordHelper.send_message("{0} is already registered in {1}".format(username, channel_name),
-                                                 channel_id,
-                                                 client)
-                return
-            except UserNotFoundException:
-                print("{0} was not found on instagram, check the spelling".format(username))
-                await DiscordHelper.send_message("{0} was not found on Instagram, check the spelling".format(username),
-                                                 channel_id,
-                                                 client)
-                return
-            except Exception as e:
-                print(e)
-                await DiscordHelper.send_message("An error has occurred", channel_id, client)
-                return
-
-    if msg.startswith('$unregister') and \
-            DiscordHelper.user_is_allowed_to_register(message.author,
-                                                      postgresDao.user_is_whitelisted(message.guild.id,
-                                                                                      message.author.id),
-                                                      message.guild):
-        if len(msg.split(' ')) == 2:  # if it has 2 args (command and username)
-            username = msg.split(' ')[1]
-            print("unregistering {0} in {1} {2}".format(username, channel_name, str(channel_id)))
-            try:
-                unregister_user(username, channel_id)
-                print('{0} was unregistered from {1}'.format(username, channel_name))
-                await DiscordHelper.send_message('{0} was unregistered from {1}'.format(username, channel_name),
-                                                 channel_id,
-                                                 client)
-            except UserNotRegisteredException:
-                print('{0} is not registered in {1}'.format(username, channel_name))
-                await DiscordHelper.send_message('{0} is not registered in {1}'.format(username, channel_name),
-                                                 channel_id,
-                                                 client)
-            return
-
-    if msg.startswith('$users all') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
-        users = postgresDao.get_all_users()
-        users_string = get_users_string(users)
-        if len(users) == 0:
-            await DiscordHelper.send_message("There are no registered users", channel_id, client)
-        else:
-            await DiscordHelper.send_message("Currently registered users: ```{0}```".format(users_string), channel_id, client)
-        return
-
-    if msg.startswith('$users'):
-        users = postgresDao.get_registered_users_in_channel(channel_id)
-        users_string = get_users_string(users)
-        if len(users) == 0:
-            await DiscordHelper.send_message("There are no registered users in {0}".format(channel_name),
-                                             channel_id,
-                                             client)
-        else:
-            await DiscordHelper.send_message("Currently registered users in {0}: ```{1}```"
-                                             .format(channel_name, users_string),
-                                             channel_id,
-                                             client)
-        return
-
-    if msg.startswith('$getpost'):
-        if len(msg.split(' ')) == 2:  # if it has 2 args (command and shortcode)
-            shortcode = msg.split(' ')[1]
-            print("getting post {0} in {1} {2}".format(shortcode, channel_name, channel_id))
-            try:
-                post = instaHelper.get_post_from_shortcode(shortcode)
-                files = get_post_files(post)
-                await DiscordHelper.send_post(post, channel_id, files, client)
-            except Exception as e:
-                print('There was an issue getting post {0}'.format(shortcode))
-                print(e)
-                await DiscordHelper.send_message('There was an issue getting post {0}'.format(shortcode),
-                                                 channel_id,
-                                                 client)
-        return
-
-    if msg.startswith('$getstories'):
-        if not instaHelper.logged_in or not postgresDao.stories_are_enabled():
-            await DiscordHelper.send_message("stories not enabled", channel_id, client)
-            return
-        if len(msg.split(' ')) == 2:  # if it has 2 args (command and username)
-            username = msg.split(' ')[1]
-            print("getting current stories for {0} in {1} {2}".format(username, channel_name, channel_id))
-            try:
-                userid = ""
-                try:
-                    userid = postgresDao.get_userid_from_db(username)
-                except Exception:
-                    print(f"{username} not found in db, getting from instagram")
-                if userid == "":
-                    profile = instaHelper.get_profile_from_username(username)
-                    userid = profile.userid
-                storyitems = instaHelper.get_stories_for_user(userid, 0)
-                await send_stories(storyitems, username, [channel_id], True)
-            except Exception as e:
-                print('There was an issue getting stories for {0}'.format(username))
-                print(e)
-                await DiscordHelper.send_message('There was an issue getting stories for {0}'.format(username),
-                                                 channel_id,
-                                                 client)
-        return
-
-    if msg.startswith('$whitelist') and \
-            DiscordHelper.user_is_mod(message.author, message.guild) and \
-            len(msg.split(' ')) == 2:  # if it has 2 args (command and user @)
-        username = msg.split(' ')[1]
-        user_id = strip_username_to_user_id(username)
-        try:
-            whitelist_user(message.guild.id, user_id)
-            await DiscordHelper.send_message('{0} has been whitelisted in this server'.format(username),
-                                             channel_id,
-                                             client)
-            return
-        except UserAlreadyWhitelistedException:
-            await DiscordHelper.send_message('{0} is already whitelisted in this server'.format(username),
-                                             channel_id,
-                                             client)
-            return
-        except:
-            await DiscordHelper.send_message('An error has occurred', channel_id, client)
-            return
-
-    if msg.startswith('$unwhitelist') and \
-            DiscordHelper.user_is_mod(message.author, message.guild) and \
-            len(msg.split(' ')) == 2:  # if it has 2 args (command and user @)
-        username = msg.split(' ')[1]
-        user_id = strip_username_to_user_id(username)
-        try:
-            unwhitelist_user(message.guild.id, user_id)
-            await DiscordHelper.send_message('{0} has been unwhitelisted in this server'.format(username),
-                                             channel_id,
-                                             client)
-            return
-        except UserNotWhitelistedException:
-            await DiscordHelper.send_message('{0} is not whitelisted in this server'.format(username),
-                                             channel_id,
-                                             client)
-            return
-        except:
-            await DiscordHelper.send_message('An error has occurred', channel_id, client)
-            return
-
-    if msg.startswith('$whitelist') and \
-            DiscordHelper.user_is_mod(message.author, message.guild) and \
-            len(msg.split(' ')) == 1:  # if it is only the whitelist command
-        try:
-            users = get_whitelisted_users(message.guild.id)
-            users_string = ""
-            for user in users:
-                users_string = users_string + " " + user
-            if len(users) == 0:
-                await DiscordHelper.send_message("There are no whitelisted users in this server.",
-                                                 channel_id,
-                                                 client)
-                return
-            else:
-                await DiscordHelper.send_message("Currently whitelisted users in this server: {0}"
-                                                 .format(users_string),
-                                                 channel_id,
-                                                 client)
-                return
-        except:
-            await DiscordHelper.send_message('An error has occurred', channel_id, client)
-            return
-
-    if msg.startswith('$stories'):
-        await DiscordHelper.send_story_status(instaHelper.logged_in,
-                                              postgresDao.stories_are_enabled(),
-                                              channel_id,
-                                              client)
-
-    if msg.startswith('$update_username') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
-        if not len(msg.split(' ')) == 3:  # if it has 3 args (command, old username, and new username)
-            await DiscordHelper.send_message('correct usage is \'$update_username old_username new_username\'',
-                                             channel_id, client)
-            return
-        else:
-            old_username = msg.split(' ')[1]
-            new_username = msg.split(' ')[2]
-            if not len(old_username) > 0:
-                await DiscordHelper.send_message('invalid old username', channel_id, client)
-                return
-            if not len(new_username) > 0:
-                await DiscordHelper.send_message('invalid new username', channel_id, client)
-                return
-            if not len(postgresDao.get_channels_for_user(old_username)) > 0:
-                await DiscordHelper.send_message('user is not registered', channel_id, client)
-                return
-            postgresDao.update_username(old_username, new_username)
-            await DiscordHelper.send_message('Successfully updated {0} to {1}'.format(old_username, new_username),
-                                             channel_id, client)
-    if msg.startswith('$registrations') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
-        users = postgresDao.get_all_users()
-        for user in users:
-            channels = postgresDao.get_channels_for_user(user)
-            await DiscordHelper.send_message(get_channels_string(user, channels), channel_id, client)
-        return
-
-    if msg.startswith('$set_stories_enabled') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
-        if not len(msg.split(' ')) == 2:  # if it has 2 args (command, enabled flag)
-            await DiscordHelper.send_message('correct usage is \'$set_stories_enabled true\' or'
-                                             ' \'$set_stories_enabled false\'', channel_id, client)
-            return
-        enabled = msg.split(' ')[1]
-        if not (enabled == 'true' or enabled == 'false'):
-            await DiscordHelper.send_message('correct usage is \'$set_stories_enabled true\' or'
-                                             ' \'$set_stories_enabled false\'', channel_id, client)
-            return
-        if enabled == 'true':
-            postgresDao.enable_stories()
-        else:
-            postgresDao.disable_stories()
-        await DiscordHelper.send_story_status(instaHelper.logged_in,
-                                              postgresDao.stories_are_enabled(),
-                                              channel_id,
-                                              client)
-
-    if msg.startswith('$try_insta_login') and str(message.author.id) == os.getenv('BOT_OWNER_ID'):
-        print("retrying insta login")
-        try_insta_login()
-
-
 async def refresh_users(users, refresh_all_users, channel_sent_from):
-    if refresh_all_users:
-        if channel_sent_from is not None:
-            await DiscordHelper.send_message("refreshing all", channel_sent_from, client)
-        start_time = datetime.datetime.now().timestamp()
+    start_time = datetime.datetime.now().timestamp()
     await refresh_posts(users, refresh_all_users, channel_sent_from)
     if instaHelper.logged_in and postgresDao.stories_are_enabled():
         await refresh_stories(users, refresh_all_users, channel_sent_from)
-    if refresh_all_users:
-        end_time = datetime.datetime.now().timestamp()
-        # noinspection PyUnboundLocalVariable
-        duration = round(end_time - start_time, 1)
-        if channel_sent_from is not None:
-            await DiscordHelper.send_message("done refreshing in {0}s".format(duration), channel_sent_from, client)
+    end_time = datetime.datetime.now().timestamp()
+    # noinspection PyUnboundLocalVariable
+    duration = round(end_time - start_time, 1)
+    return duration
 
 
 async def refresh_posts(users, refresh_all_users, channel_sent_from):
@@ -411,13 +358,14 @@ async def send_posts(posts, user, channels):
             # this is the most consistent way to handle this issue
             # this all came about because trying to download CNiXcG5nwpc was throwing
             # instaloader.exceptions.ConnectionException: download_pic(): HTTP error code 429
-            # this post is an IGTV post and maybe that has something to do with it but I don't see a way to
+            # this post is an IGTV post and maybe that has something to do with it, but I don't see a way to
             # identify them before they fail to download.
             continue
         for channel in channels:
             print('{0} {1} in {2}'.format(post.mediaid, post.shortcode, channel))
             await DiscordHelper.send_post(post, channel, files, client)
         postgresDao.set_latest_post_id(user, post.mediaid)
+        # sleep to hopefully make IG flag the account less often
         time.sleep(random.randint(1, 5))
 
 
@@ -430,6 +378,7 @@ async def send_stories(storyitems, user, channels, dont_update_last_story_id):
             await DiscordHelper.send_story(storyitem, channel, files, client)
         if not dont_update_last_story_id:
             postgresDao.set_latest_story_id(user, storyitem.mediaid)
+        # sleep to hopefully make IG flag the account less often
         time.sleep(random.randint(1, 5))
 
 
@@ -555,31 +504,35 @@ def get_enabled_users(users):
 @tasks.loop(minutes=get_refresh_interval())
 async def auto_refresh():
     with contextlib.suppress(Exception):
-        global first_refresh
         # it always tries to run this when first starting and fails because the bot hasn't started yet
-        if not first_refresh:
-            all_users = postgresDao.get_all_users()
-            print('auto refreshing all users')
-            await print_auto_refresh_message(True, None)
-            start_time = datetime.datetime.now().timestamp()
-            await refresh_users(all_users, True, None)
-            end_time = datetime.datetime.now().timestamp()
-            duration = round(end_time - start_time, 1)
-            print('done auto refreshing all users in {0}'.format(duration))
-            await print_auto_refresh_message(False, duration)
-        else:
+        global first_refresh
+        if first_refresh:
             first_refresh = False
+            return
+        all_users = postgresDao.get_all_enabled_users()
+        print('auto refreshing all users')
+        await print_auto_refresh_message(True, None)
+        start_time = datetime.datetime.now().timestamp()
+        await refresh_users(all_users, True, None)
+        end_time = datetime.datetime.now().timestamp()
+        duration = round(end_time - start_time, 1)
+        print('done auto refreshing all users in {0}'.format(duration))
+        await print_auto_refresh_message(False, duration)
 
+
+async def start_bot():
+    async with client:
+        try:
+            postgresDao.attempt_migrations()
+            try:
+                try_insta_login()
+            except Exception as e:
+                print('stories disabled due to login error')
+                print(e)
+            auto_refresh.start()
+            await client.start(os.getenv('DISCORD_TOKEN'))
+        finally:
+            auto_refresh.stop()
 
 if __name__ == "__main__":
-    try:
-        postgresDao.attempt_migrations()
-        try:
-            try_insta_login()
-        except Exception as e:
-            print('stories disabled due to login error')
-            print(e)
-        auto_refresh.start()
-        client.run(os.getenv('DISCORD_TOKEN'))
-    finally:
-        auto_refresh.stop()
+    asyncio.run(start_bot())
