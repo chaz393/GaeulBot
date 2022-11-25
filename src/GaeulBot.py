@@ -86,6 +86,26 @@ async def command_refresh_all(interaction: Interaction):
         return
 
 
+@tree.command(name="refresh-stories", description="Refreshes stories for users in this channel", guild=guild)
+async def command_refresh_stories(interaction: Interaction):
+    if not instaHelper.logged_in or not postgresDao.stories_are_enabled():
+        await interaction.response.send_message("Stories are not enabled or are unavailable")
+        return
+    await interaction.response.defer()
+    users = postgresDao.get_registered_users_in_channel(interaction.channel.id)
+    enabled_users = get_enabled_users(users)
+    if len(enabled_users) == 0:
+        await interaction.edit_original_response(content=f"There are no registered users in {interaction.channel.name}")
+        return
+    else:
+        start_time = datetime.datetime.now().timestamp()
+        await refresh_stories(users, False, interaction.channel.id)
+        end_time = datetime.datetime.now().timestamp()
+        duration = round(end_time - start_time, 1)
+        await interaction.edit_original_response(content=f"Refresh completed in {duration}s")
+        return
+
+
 @tree.command(name="users", description="Prints a list of users registered in this channel", guild=guild)
 async def command_users(interaction: Interaction):
     users = postgresDao.get_registered_users_in_channel(interaction.channel.id)
@@ -124,7 +144,10 @@ async def command_registrations(interaction: Interaction):
 
 @tree.command(name="stories", description="Prints whether or not stories are enabled", guild=guild)
 async def command_stories(interaction: Interaction):
-    await DiscordHelper.send_story_status(instaHelper.logged_in, postgresDao.stories_are_enabled(), interaction)
+    await DiscordHelper.send_story_status(instaHelper.logged_in,
+                                          postgresDao.stories_are_enabled(),
+                                          postgresDao.get_disable_auto_refresh_stories(),
+                                          interaction)
 
 
 @tree.command(name="set-stories-enabled", description="Enabled or disables stories globally", guild=guild)
@@ -136,7 +159,10 @@ async def command_set_stories_enabled(interaction: Interaction, enable: bool):
         postgresDao.enable_stories()
     else:
         postgresDao.disable_stories()
-    await DiscordHelper.send_story_status(instaHelper.logged_in, postgresDao.stories_are_enabled(), interaction)
+    await DiscordHelper.send_story_status(instaHelper.logged_in,
+                                          postgresDao.stories_are_enabled(),
+                                          postgresDao.get_disable_auto_refresh_stories(),
+                                          interaction)
 
 
 @tree.command(name="retry-instagram-login", description="Retries instagram login", guild=guild)
@@ -260,6 +286,22 @@ async def command_update_username(interaction: Interaction, old_username: str, n
     await interaction.response.send_message(f"Successfully updated {old_username} to {new_username}")
 
 
+@tree.command(name="auto-refresh-stories",
+              description="Enables/disables refreshing stories for auto refresh, /refresh, and /refresh-all",
+              guild=guild)
+async def command_disable_auto_refresh_stories(interaction: Interaction, enable: bool):
+    if not str(interaction.user.id) == os.getenv('BOT_OWNER_ID'):
+        await interaction.response.send_message("You do not have permission to use this command")
+        return
+    if enable:
+        postgresDao.enabled_auto_refresh_stories()
+        await interaction.response.send_message("Auto refresh stories has been enabled")
+    else:
+        postgresDao.disable_auto_refresh_stories()
+        await interaction.response.send_message("Auto refresh stories has been disabled")
+
+
+
 @client.event
 async def on_ready():
     print('logged in as {0.user}'.format(client))
@@ -281,7 +323,9 @@ async def post_bot_online_message():
 async def refresh_users(users, refresh_all_users, channel_sent_from):
     start_time = datetime.datetime.now().timestamp()
     await refresh_posts(users, refresh_all_users, channel_sent_from)
-    if instaHelper.logged_in and postgresDao.stories_are_enabled():
+    if instaHelper.logged_in and \
+            postgresDao.stories_are_enabled() and \
+            not postgresDao.get_disable_auto_refresh_stories():
         await refresh_stories(users, refresh_all_users, channel_sent_from)
     end_time = datetime.datetime.now().timestamp()
     # noinspection PyUnboundLocalVariable

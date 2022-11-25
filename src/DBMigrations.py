@@ -7,6 +7,7 @@ class DBMigrations:
         self.migrations[2] = self.two_to_three
         self.migrations[3] = self.three_to_four
         self.migrations[4] = self.four_to_five
+        self.migrations[5] = self.five_to_six
 
     @staticmethod
     def one_to_two(conn):
@@ -45,4 +46,11 @@ class DBMigrations:
         cursor = conn.cursor()
         cursor.execute("ALTER TABLE user_info ADD COLUMN user_disabled BOOLEAN DEFAULT FALSE")
         cursor.execute("UPDATE app_info SET dbversion = 5")
+        conn.commit()
+
+    @staticmethod
+    def five_to_six(conn):
+        cursor = conn.cursor()
+        cursor.execute("ALTER TABLE app_info ADD COLUMN disable_auto_refresh_stories BOOLEAN DEFAULT FALSE")
+        cursor.execute("UPDATE app_info SET dbversion = 6")
         conn.commit()
