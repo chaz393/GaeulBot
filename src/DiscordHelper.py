@@ -90,11 +90,13 @@ class DiscordHelper:
     # this responds to the interaction
     # be careful using if there's a chance the interaction could have already been responded to
     @staticmethod
-    async def send_story_status(logged_in, stories_are_enabled, interaction):
+    async def send_story_status(logged_in, stories_are_enabled, disable_auto_refresh_stories, interaction):
         if not logged_in and stories_are_enabled:
             await interaction.response.send_message("Stories are enabled but unavailable due to login error. "
                                                     "Check logs")
-        elif logged_in and stories_are_enabled:
-            await interaction.response.send_message("Stories are enabled")
+        elif logged_in and stories_are_enabled and disable_auto_refresh_stories:
+            await interaction.response.send_message("Stories are enabled, but auto refresh is disabled")
+        elif logged_in and stories_are_enabled and not disable_auto_refresh_stories:
+            await interaction.response.send_message("Stories are enabled and auto refresh is enabled")
         elif not stories_are_enabled:
             await interaction.response.send_message("Stories are disabled")

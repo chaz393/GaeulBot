@@ -5,7 +5,7 @@ from DBMigrations import DBMigrations
 
 class PostgresDao:
 
-    db_version = 5
+    db_version = 6
     dbMigrations = DBMigrations()
 
     def __init__(self):
@@ -155,5 +155,18 @@ class PostgresDao:
 
     def is_user_disabled(self, username):
         self.cursor.execute("SELECT user_disabled FROM user_info WHERE username = \'{0}\'".format(username))
+        rows = self.cursor.fetchall()
+        return rows[0][0]
+
+    def disable_auto_refresh_stories(self):
+        self.cursor.execute("UPDATE app_info SET disable_auto_refresh_stories = true;")
+        self.conn.commit()
+
+    def enabled_auto_refresh_stories(self):
+        self.cursor.execute("UPDATE app_info SET disable_auto_refresh_stories = false;")
+        self.conn.commit()
+
+    def get_disable_auto_refresh_stories(self):
+        self.cursor.execute("SELECT disable_auto_refresh_stories FROM app_info")
         rows = self.cursor.fetchall()
         return rows[0][0]
