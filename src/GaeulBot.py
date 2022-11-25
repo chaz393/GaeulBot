@@ -301,7 +301,6 @@ async def command_disable_auto_refresh_stories(interaction: Interaction, enable:
         await interaction.response.send_message("Auto refresh stories has been disabled")
 
 
-
 @client.event
 async def on_ready():
     print('logged in as {0.user}'.format(client))
