@@ -231,17 +231,15 @@ async def command_unregister(interaction: Interaction, username: str):
               description="Gets and posts an instagram post to this channel provided an post shortcode",
               guild=guild)
 async def command_get_post(interaction: Interaction, shortcode: str):
-    print(f"getting post {shortcode} in {interaction.channel.name} {interaction.channel.id}")
-    await interaction.response.defer()
-    try:
-        post = instaHelper.get_post_from_shortcode(shortcode)
-        files = get_post_files(post)
-        await DiscordHelper.send_post(post, interaction.channel.id, files, client)
-        await interaction.edit_original_response(content=f"Post {shortcode} has been posted")
-    except Exception as e:
-        print(f"There was an issue getting post {shortcode} in {interaction.channel.name}")
-        print(e)
-        await interaction.edit_original_response(content=f"There was an issue getting post {shortcode}")
+    await get_post_from_shortcode(interaction, shortcode)
+
+
+@tree.command(name="get-post-from-url",
+              description="Gets and posts an instagram post to this channel provided an post shortcode",
+              guild=guild)
+async def command_get_post_from_url(interaction: Interaction, link: str):
+    shortcode = link.split("instagram.com/p/")[1].split("/")[0]
+    await get_post_from_shortcode(interaction, shortcode)
 
 
 @tree.command(name="get-stories",
@@ -385,6 +383,20 @@ def unregister_user(username, channel_id):
     # if this is the last channel this uer is registered in, delete last post id info
     if len(postgresDao.get_channels_for_user(username)) == 0:
         postgresDao.delete_user_info(username)
+
+
+async def get_post_from_shortcode(interaction: Interaction, shortcode: str):
+    print(f"getting post {shortcode} in {interaction.channel.name} {interaction.channel.id}")
+    await interaction.response.defer()
+    try:
+        post = instaHelper.get_post_from_shortcode(shortcode)
+        files = get_post_files(post)
+        await DiscordHelper.send_post(post, interaction.channel.id, files, client)
+        await interaction.edit_original_response(content=f"Post {shortcode} has been posted")
+    except Exception as e:
+        print(f"There was an issue getting post {shortcode} in {interaction.channel.name}")
+        print(e)
+        await interaction.edit_original_response(content=f"There was an issue getting post {shortcode}")
 
 
 async def send_posts(posts, user, channels):
